@@ -110,6 +110,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     protected SettingWidget settingWidget;
     protected MapWidget mapWidget;
     protected TopBarPanelWidget topBarPanel;
+    protected View takeOffWidget;
+    protected View returnHomeWidget;
+    protected View remainingFlightTimeWidget;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -134,10 +137,13 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         }
     };
 
+    private List<ComponentIndexType> lastAvailableCameraList = new ArrayList<>();
+
     private final ICameraStreamManager.AvailableCameraUpdatedListener availableCameraUpdatedListener =
             new ICameraStreamManager.AvailableCameraUpdatedListener() {
                 @Override
                 public void onAvailableCameraUpdated(@NonNull List<ComponentIndexType> availableCameraList) {
+                    lastAvailableCameraList = availableCameraList;
                     runOnUiThread(() -> updateFPVWidgetSource(availableCameraList));
                 }
 
@@ -174,6 +180,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         horizontalSituationIndicatorWidget = findViewById(R.id.widget_horizontal_situation_indicator);
         gimbalAdjustDone = findViewById(R.id.fpv_gimbal_ok_btn);
         gimbalFineTuneWidget = findViewById(R.id.setting_menu_gimbal_fine_tune);
+        takeOffWidget = findViewById(R.id.widget_take_off);
+        returnHomeWidget = findViewById(R.id.widget_return_to_home);
+        remainingFlightTimeWidget = findViewById(R.id.widget_remaining_flight_time);
         mapWidget = findViewById(R.id.widget_map);
         mapMiniLayoutParams = new ConstraintLayout.LayoutParams(
                 (ConstraintLayout.LayoutParams) mapWidget.getLayoutParams());
@@ -223,7 +232,19 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         fpvParentView.setOnClickListener(v -> onViewClick(fpvParentView));
         // ─────────────────────────────────────────────────────────────────────
 
-        secondaryFPVWidget.setOnClickListener(v -> swapVideoSource());
+        primaryFpvWidget.setOnClickListener(v -> {
+            if (!isMapMini) {
+                onViewClick(fpvParentView);
+            }
+        });
+
+        secondaryFPVWidget.setOnClickListener(v -> {
+            if (isMapMini) {
+                swapVideoSource();
+            } else {
+                onViewClick(fpvParentView);
+            }
+        });
 
         if (settingWidget != null) {
             settingWidget.setOnClickListener(v -> toggleRightDrawer());
@@ -328,6 +349,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             bringThumbnailToFront(mapWidget);
             fpvInteractionWidget.setInteractionEnabled(true);
             isMapMini = true;
+            updateWidgetsVisibility(false);
 
         } else if (view == mapWidget && isMapMini) {
             // ── Expand: map grows, FPV shrinks ────────────────────────────────
@@ -335,6 +357,45 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             bringThumbnailToFront(fpvParentView);
             fpvInteractionWidget.setInteractionEnabled(false);
             isMapMini = false;
+            updateWidgetsVisibility(true);
+        }
+    }
+
+    private void updateWidgetsVisibility(boolean isMapExpanded) {
+        if (isMapExpanded) {
+            // Hide everything that shouldn't be there when map is expanded
+            if (lensControlWidget != null) lensControlWidget.setVisibility(View.GONE);
+            if (ndviCameraPanel != null) ndviCameraPanel.setVisibility(View.GONE);
+            if (visualCameraPanel != null) visualCameraPanel.setVisibility(View.GONE);
+            if (autoExposureLockWidget != null) autoExposureLockWidget.setVisibility(View.GONE);
+            if (focusModeWidget != null) focusModeWidget.setVisibility(View.GONE);
+            if (focusExposureSwitchWidget != null) focusExposureSwitchWidget.setVisibility(View.GONE);
+            if (cameraControlsWidget != null) cameraControlsWidget.setVisibility(View.GONE);
+            if (focalZoomWidget != null) focalZoomWidget.setVisibility(View.GONE);
+            if (horizontalSituationIndicatorWidget != null)
+                horizontalSituationIndicatorWidget.setVisibility(View.GONE);
+            if (pfvFlightDisplayWidget != null) pfvFlightDisplayWidget.setVisibility(View.GONE);
+            if (simulatorControlWidget != null) simulatorControlWidget.setVisibility(View.GONE);
+            if (gimbalFineTuneWidget != null) gimbalFineTuneWidget.setVisibility(View.GONE);
+
+            // Thumbnail Management:
+            // Keep Primary FPV visible (it will shrink with the fpv_holder container)
+            primaryFpvWidget.setVisibility(View.VISIBLE);
+            // Hide the extra secondary FPV widget so it doesn't overlap in the thumbnail
+            secondaryFPVWidget.setVisibility(View.GONE);
+
+        } else {
+            // Reverting to FPV: Restore the "default" layout
+            primaryFpvWidget.setVisibility(View.VISIBLE);
+            if (horizontalSituationIndicatorWidget != null) {
+                horizontalSituationIndicatorWidget.setVisibility(View.VISIBLE);
+            }
+
+            // Restore Secondary FPV visibility based on actual camera availability
+            updateFPVWidgetSource(lastAvailableCameraList);
+
+            // Use the existing logic to set visibility based on camera/lens type
+            updateViewVisibility(lastDevicePosition, lastLensType);
         }
     }
 
