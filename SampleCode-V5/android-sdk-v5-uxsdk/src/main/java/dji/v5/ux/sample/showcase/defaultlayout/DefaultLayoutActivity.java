@@ -26,10 +26,7 @@ package dji.v5.ux.sample.showcase.defaultlayout;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.Transformation;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -79,9 +76,7 @@ import dji.v5.ux.core.widget.simulator.SimulatorIndicatorWidget;
 import dji.v5.ux.core.widget.systemstatus.SystemStatusWidget;
 import dji.v5.ux.gimbal.GimbalFineTuneWidget;
 import dji.v5.ux.map.MapWidget;
-import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
-import dji.v5.ux.mapkit.core.models.DJILatLng;
 import dji.v5.ux.training.simulatorcontrol.SimulatorControlWidget;
 import dji.v5.ux.visualcamera.CameraNDVIPanelWidget;
 import dji.v5.ux.visualcamera.CameraVisiblePanelWidget;
@@ -123,12 +118,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     private CameraLensType lastLensType = CameraLensType.UNKNOWN;
 
     // ── Swap state ────────────────────────────────────────────────────────────
-    private boolean isMapMini = true;   // true → map is the small overlay
-    private int widgetHeight;
-    private int widgetWidth;
-    private int widgetMargin;
-    private int deviceWidth;
-    private int deviceHeight;
+    private boolean isMapMini = true; // true → map is the small overlay
+    private ConstraintLayout.LayoutParams mapMiniLayoutParams;
+    private ConstraintLayout.LayoutParams fpvFullLayoutParams;
     // ─────────────────────────────────────────────────────────────────────────
 
     private CompositeDisposable compositeDisposable;
@@ -161,37 +153,32 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.uxsdk_activity_default_layout);
 
-        // ── Swap: read dimensions ─────────────────────────────────────────────
-        widgetHeight = (int) getResources().getDimension(R.dimen.uxsdk_mini_map_height);
-        widgetWidth  = (int) getResources().getDimension(R.dimen.uxsdk_mini_map_width);
-        widgetMargin = (int) getResources().getDimension(R.dimen.uxsdk_mini_map_margin);
-        DisplayMetrics dm = getResources().getDisplayMetrics();
-        deviceHeight = dm.heightPixels;
-        deviceWidth  = dm.widthPixels;
-        // ─────────────────────────────────────────────────────────────────────
-
-        fpvParentView   = findViewById(R.id.fpv_holder);
-        mDrawerLayout   = findViewById(R.id.root_view);
-        topBarPanel     = findViewById(R.id.panel_top_bar);
-        settingWidget   = topBarPanel.getSettingWidget();
-        primaryFpvWidget        = findViewById(R.id.widget_primary_fpv);
-        fpvInteractionWidget    = findViewById(R.id.widget_fpv_interaction);
-        secondaryFPVWidget      = findViewById(R.id.widget_secondary_fpv);
+        fpvParentView = findViewById(R.id.fpv_holder);
+        mDrawerLayout = findViewById(R.id.root_view);
+        topBarPanel = findViewById(R.id.panel_top_bar);
+        settingWidget = topBarPanel.getSettingWidget();
+        primaryFpvWidget = findViewById(R.id.widget_primary_fpv);
+        fpvInteractionWidget = findViewById(R.id.widget_fpv_interaction);
+        secondaryFPVWidget = findViewById(R.id.widget_secondary_fpv);
         systemStatusListPanelWidget = findViewById(R.id.widget_panel_system_status_list);
-        simulatorControlWidget  = findViewById(R.id.widget_simulator_control);
-        lensControlWidget       = findViewById(R.id.widget_lens_control);
-        ndviCameraPanel         = findViewById(R.id.panel_ndvi_camera);
-        visualCameraPanel       = findViewById(R.id.panel_visual_camera);
-        autoExposureLockWidget  = findViewById(R.id.widget_auto_exposure_lock);
-        focusModeWidget         = findViewById(R.id.widget_focus_mode);
+        simulatorControlWidget = findViewById(R.id.widget_simulator_control);
+        lensControlWidget = findViewById(R.id.widget_lens_control);
+        ndviCameraPanel = findViewById(R.id.panel_ndvi_camera);
+        visualCameraPanel = findViewById(R.id.panel_visual_camera);
+        autoExposureLockWidget = findViewById(R.id.widget_auto_exposure_lock);
+        focusModeWidget = findViewById(R.id.widget_focus_mode);
         focusExposureSwitchWidget = findViewById(R.id.widget_focus_exposure_switch);
-        pfvFlightDisplayWidget  = findViewById(R.id.widget_fpv_flight_display_widget);
-        focalZoomWidget         = findViewById(R.id.widget_focal_zoom);
-        cameraControlsWidget    = findViewById(R.id.widget_camera_controls);
+        pfvFlightDisplayWidget = findViewById(R.id.widget_fpv_flight_display_widget);
+        focalZoomWidget = findViewById(R.id.widget_focal_zoom);
+        cameraControlsWidget = findViewById(R.id.widget_camera_controls);
         horizontalSituationIndicatorWidget = findViewById(R.id.widget_horizontal_situation_indicator);
-        gimbalAdjustDone        = findViewById(R.id.fpv_gimbal_ok_btn);
-        gimbalFineTuneWidget    = findViewById(R.id.setting_menu_gimbal_fine_tune);
-        mapWidget               = findViewById(R.id.widget_map);
+        gimbalAdjustDone = findViewById(R.id.fpv_gimbal_ok_btn);
+        gimbalFineTuneWidget = findViewById(R.id.setting_menu_gimbal_fine_tune);
+        mapWidget = findViewById(R.id.widget_map);
+        mapMiniLayoutParams = new ConstraintLayout.LayoutParams(
+                (ConstraintLayout.LayoutParams) mapWidget.getLayoutParams());
+        fpvFullLayoutParams = new ConstraintLayout.LayoutParams(
+                (ConstraintLayout.LayoutParams) fpvParentView.getLayoutParams());
 
         initClickListener();
 
@@ -326,10 +313,10 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     /**
      * Central dispatcher for the layout swap.
      *
-     * • Tap mini-map  (isMapMini == true)  → map expands to full screen,
-     *                                         fpvParentView shrinks to thumbnail.
-     * • Tap mini-fpv  (isMapMini == false) → fpvParentView returns to full screen,
-     *                                         mapWidget shrinks back to thumbnail.
+     * • Tap mini-map (isMapMini == true) → map expands to full screen,
+     * fpvParentView shrinks to thumbnail.
+     * • Tap mini-fpv (isMapMini == false) → fpvParentView returns to full screen,
+     * mapWidget shrinks back to thumbnail.
      *
      * All other click targets (the large background view) are intentionally
      * ignored so that normal map-pan / FPV-interaction events pass through.
@@ -337,78 +324,32 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     private void onViewClick(View view) {
         if (view == fpvParentView && !isMapMini) {
             // ── Revert: FPV grows back, map shrinks ───────────────────────────
-            resizeViews(fpvParentView, mapWidget);          // enlarge fpv, shrink map
+            applySwapLayout(false);
+            bringThumbnailToFront(mapWidget);
             fpvInteractionWidget.setInteractionEnabled(true);
             isMapMini = true;
 
         } else if (view == mapWidget && isMapMini) {
             // ── Expand: map grows, FPV shrinks ────────────────────────────────
-            resizeViews(mapWidget, fpvParentView);          // enlarge map, shrink fpv
+            applySwapLayout(true);
+            bringThumbnailToFront(fpvParentView);
             fpvInteractionWidget.setInteractionEnabled(false);
             isMapMini = false;
         }
     }
 
-    /**
-     * Runs two simultaneous ResizeAnimations:
-     *  • viewToEnlarge → grows from its current mini-size to full device dimensions.
-     *  • viewToShrink  → shrinks from full-screen to the mini thumbnail size.
-     */
-    private void resizeViews(View viewToEnlarge, View viewToShrink) {
-        ResizeAnimation enlargeAnim = new ResizeAnimation(
-                viewToEnlarge,
-                widgetWidth, widgetHeight,      // from (mini)
-                deviceWidth, deviceHeight,      // to   (full)
-                0);                             // no margin when full-screen
-        viewToEnlarge.startAnimation(enlargeAnim);
-
-        ResizeAnimation shrinkAnim = new ResizeAnimation(
-                viewToShrink,
-                deviceWidth, deviceHeight,      // from (full)
-                widgetWidth, widgetHeight,      // to   (mini)
-                widgetMargin);                  // corner margin
-        viewToShrink.startAnimation(shrinkAnim);
+    private void bringThumbnailToFront(View thumbnailView) {
+        thumbnailView.bringToFront();
+        thumbnailView.setElevation(10f);
     }
 
-    /**
-     * Animates a View between two sizes by directly mutating its
-     * ConstraintLayout.LayoutParams on every frame.
-     */
-    private static class ResizeAnimation extends Animation {
-
-        private static final int DURATION = 300;   // ms
-
-        private final View view;
-        private final int fromWidth;
-        private final int fromHeight;
-        private final int toWidth;
-        private final int toHeight;
-        private final int margin;
-
-        private ResizeAnimation(View v,
-                                int fromWidth, int fromHeight,
-                                int toWidth,   int toHeight,
-                                int margin) {
-            this.view       = v;
-            this.fromWidth  = fromWidth;
-            this.fromHeight = fromHeight;
-            this.toWidth    = toWidth;
-            this.toHeight   = toHeight;
-            this.margin     = margin;
-            setDuration(DURATION);
-        }
-
-        @Override
-        protected void applyTransformation(float interpolatedTime, Transformation t) {
-            int w = (int) ((toWidth  - fromWidth)  * interpolatedTime + fromWidth);
-            int h = (int) ((toHeight - fromHeight) * interpolatedTime + fromHeight);
-            ConstraintLayout.LayoutParams p =
-                    (ConstraintLayout.LayoutParams) view.getLayoutParams();
-            p.width        = w;
-            p.height       = h;
-            p.rightMargin  = margin;
-            p.bottomMargin = margin;
-            view.requestLayout();
+    private void applySwapLayout(boolean mapExpanded) {
+        if (mapExpanded) {
+            mapWidget.setLayoutParams(new ConstraintLayout.LayoutParams(fpvFullLayoutParams));
+            fpvParentView.setLayoutParams(new ConstraintLayout.LayoutParams(mapMiniLayoutParams));
+        } else {
+            fpvParentView.setLayoutParams(new ConstraintLayout.LayoutParams(fpvFullLayoutParams));
+            mapWidget.setLayoutParams(new ConstraintLayout.LayoutParams(mapMiniLayoutParams));
         }
     }
     // endregion swap ═══════════════════════════════════════════════════════════
@@ -448,13 +389,13 @@ public class DefaultLayoutActivity extends AppCompatActivity {
 
     private ComponentIndexType getSuitableSource(List<ComponentIndexType> cameraList,
                                                  ComponentIndexType defaultSource) {
-        if (cameraList.contains(ComponentIndexType.LEFT_OR_MAIN))  return ComponentIndexType.LEFT_OR_MAIN;
-        if (cameraList.contains(ComponentIndexType.RIGHT))         return ComponentIndexType.RIGHT;
-        if (cameraList.contains(ComponentIndexType.UP))            return ComponentIndexType.UP;
-        if (cameraList.contains(ComponentIndexType.PORT_1))        return ComponentIndexType.PORT_1;
-        if (cameraList.contains(ComponentIndexType.PORT_2))        return ComponentIndexType.PORT_2;
-        if (cameraList.contains(ComponentIndexType.PORT_3))        return ComponentIndexType.PORT_4;
-        if (cameraList.contains(ComponentIndexType.PORT_4))        return ComponentIndexType.PORT_4;
+        if (cameraList.contains(ComponentIndexType.LEFT_OR_MAIN)) return ComponentIndexType.LEFT_OR_MAIN;
+        if (cameraList.contains(ComponentIndexType.RIGHT)) return ComponentIndexType.RIGHT;
+        if (cameraList.contains(ComponentIndexType.UP)) return ComponentIndexType.UP;
+        if (cameraList.contains(ComponentIndexType.PORT_1)) return ComponentIndexType.PORT_1;
+        if (cameraList.contains(ComponentIndexType.PORT_2)) return ComponentIndexType.PORT_2;
+        if (cameraList.contains(ComponentIndexType.PORT_3)) return ComponentIndexType.PORT_4;
+        if (cameraList.contains(ComponentIndexType.PORT_4)) return ComponentIndexType.PORT_4;
         if (cameraList.contains(ComponentIndexType.VISION_ASSIST)) return ComponentIndexType.VISION_ASSIST;
         return defaultSource;
     }
@@ -514,7 +455,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void swapVideoSource() {
-        ComponentIndexType primarySource   = primaryFpvWidget.getWidgetModel().getCameraIndex();
+        ComponentIndexType primarySource = primaryFpvWidget.getWidgetModel().getCameraIndex();
         ComponentIndexType secondarySource = secondaryFPVWidget.getWidgetModel().getCameraIndex();
         if (primarySource != ComponentIndexType.UNKNOWN
                 && secondarySource != ComponentIndexType.UNKNOWN) {
