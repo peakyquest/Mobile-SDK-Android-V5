@@ -303,6 +303,36 @@
             app:layout_constraintWidth_percent="0.95"
             app:uxsdk_titleBarBackgroundColor="@color/uxsdk_black" />
 
+        <LinearLayout
+            android:id="@+id/map_controls_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginEnd="12dp">
+
+            <ImageView
+                android:id="@+id/btn_map_type"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/uxsdk_selector_icon_bg"
+                android:src="@drawable/uxsdk_ic_overview_status"
+                android:padding="8dp"
+                android:layout_marginBottom="12dp"/>
+
+            <ImageView
+                android:id="@+id/btn_fly_zones"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/uxsdk_selector_icon_bg"
+                android:src="@drawable/uxsdk_ic_flyzone_locked"
+                android:padding="8dp"/>
+
+        </LinearLayout>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <dji.v5.ux.core.widget.setting.SettingPanelWidget

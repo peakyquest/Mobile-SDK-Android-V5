@@ -23,10 +23,13 @@
 
 package dji.v5.ux.sample.showcase.defaultlayout;
 
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -36,16 +39,22 @@ import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+
+import org.jetbrains.annotations.NotNull;
+
 import dji.sdk.keyvalue.value.common.CameraLensType;
 import dji.sdk.keyvalue.value.common.ComponentIndexType;
+import dji.v5.manager.aircraft.flysafe.info.FlyZoneCategory;
 import dji.v5.manager.datacenter.MediaDataCenter;
 import dji.v5.manager.interfaces.ICameraStreamManager;
 import dji.v5.network.DJINetworkManager;
 import dji.v5.network.IDJINetworkStatusListener;
+import dji.v5.utils.common.AndUtil;
 import dji.v5.utils.common.JsonUtil;
 import dji.v5.utils.common.LogPath;
 import dji.v5.utils.common.LogUtils;
@@ -76,7 +85,10 @@ import dji.v5.ux.core.widget.simulator.SimulatorIndicatorWidget;
 import dji.v5.ux.core.widget.systemstatus.SystemStatusWidget;
 import dji.v5.ux.gimbal.GimbalFineTuneWidget;
 import dji.v5.ux.map.MapWidget;
+import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
+import dji.v5.ux.mapkit.maplibre.map.MaplibreStyle;
+import dji.v5.ux.mapkit.maplibre.provider.MaplibreProvider;
 import dji.v5.ux.training.simulatorcontrol.SimulatorControlWidget;
 import dji.v5.ux.visualcamera.CameraNDVIPanelWidget;
 import dji.v5.ux.visualcamera.CameraVisiblePanelWidget;
@@ -113,6 +125,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     protected View takeOffWidget;
     protected View returnHomeWidget;
     protected View remainingFlightTimeWidget;
+    protected LinearLayout mapControlsContainer;
+    protected ImageView btnMapType;
+    protected ImageView btnFlyZones;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -183,6 +198,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         takeOffWidget = findViewById(R.id.widget_take_off);
         returnHomeWidget = findViewById(R.id.widget_return_to_home);
         remainingFlightTimeWidget = findViewById(R.id.widget_remaining_flight_time);
+        mapControlsContainer = findViewById(R.id.map_controls_container);
+        btnMapType = findViewById(R.id.btn_map_type);
+        btnFlyZones = findViewById(R.id.btn_fly_zones);
         mapWidget = findViewById(R.id.widget_map);
         mapMiniLayoutParams = new ConstraintLayout.LayoutParams(
                 (ConstraintLayout.LayoutParams) mapWidget.getLayoutParams());
@@ -268,6 +286,42 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 gimbalFineTuneWidget.setVisibility(View.GONE);
             }
         });
+
+        if (btnMapType != null) {
+            btnMapType.setOnClickListener(v -> showMapTypeDialog());
+        }
+        if (btnFlyZones != null) {
+            btnFlyZones.setOnClickListener(v -> showSelectFlyZoneDialog());
+        }
+    }
+
+    private void showMapTypeDialog() {
+        String[] types = {"Normal", "Satellite", "Hybrid"};
+        DJIMap.MapType[] mapTypes = {DJIMap.MapType.NORMAL, DJIMap.MapType.SATELLITE, DJIMap.MapType.HYBRID};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Map Type");
+        builder.setItems(types, (dialog, which) -> {
+            if (mapWidget.getMap() != null) {
+                mapWidget.getMap().setMapType(mapTypes[which]);
+            }
+        });
+        builder.show();
+    }
+
+    private void showSelectFlyZoneDialog() {
+        String[] categories = {"AUTHORIZATION", "WARNING", "ENHANCED_WARNING", "RESTRICTED"};
+        FlyZoneCategory[] enumCategories = {FlyZoneCategory.AUTHORIZATION, FlyZoneCategory.WARNING, FlyZoneCategory.ENHANCED_WARNING, FlyZoneCategory.RESTRICTED};
+        boolean[] checkedItems = new boolean[enumCategories.length];
+        for (int fzIndex = 0; fzIndex < enumCategories.length; fzIndex++) {
+            checkedItems[fzIndex] = mapWidget.getFlyZoneHelper().isFlyZoneVisible(enumCategories[fzIndex]);
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Fly Zones");
+        builder.setMultiChoiceItems(categories, checkedItems, (dialog, which, isChecked) -> mapWidget.getFlyZoneHelper().hideShowFlyZoneOfMap(enumCategories[which], isChecked));
+        builder.setPositiveButton("OK", null);
+        builder.show();
     }
 
     private void toggleRightDrawer() {
@@ -384,6 +438,10 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             // Hide the extra secondary FPV widget so it doesn't overlap in the thumbnail
             secondaryFPVWidget.setVisibility(View.GONE);
 
+            if (mapControlsContainer != null) {
+                mapControlsContainer.setVisibility(View.VISIBLE);
+            }
+
         } else {
             // Reverting to FPV: Restore the "default" layout
             primaryFpvWidget.setVisibility(View.VISIBLE);
@@ -396,6 +454,10 @@ public class DefaultLayoutActivity extends AppCompatActivity {
 
             // Use the existing logic to set visibility based on camera/lens type
             updateViewVisibility(lastDevicePosition, lastLensType);
+
+            if (mapControlsContainer != null) {
+                mapControlsContainer.setVisibility(View.GONE);
+            }
         }
     }
 
