@@ -136,6 +136,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     protected ImageView btnMission;
     /** Waypoint planning on the map (KMZ upload / start uses {@link dji.v5.manager.aircraft.waypoint3.WaypointMissionManager}). */
     private WaypointPlanner waypointPlanner;
+    private View waypointMissionDrawerShell;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -184,6 +185,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
 
         fpvParentView = findViewById(R.id.fpv_holder);
         mDrawerLayout = findViewById(R.id.root_view);
+        waypointMissionDrawerShell = findViewById(R.id.uxsdk_waypoint_drawer_shell);
         topBarPanel = findViewById(R.id.panel_top_bar);
         settingWidget = topBarPanel.getSettingWidget();
         primaryFpvWidget = findViewById(R.id.widget_primary_fpv);
@@ -308,11 +310,11 @@ public class DefaultLayoutActivity extends AppCompatActivity {
 
     /**
      * Mission: choose type (waypoint / hot point / custom). While waypoint planning is active,
-     * opens the plan menu (settings, save KMZ, upload, start, exit).
+     * toggles the waypoint mission drawer (right slide-over panel).
      */
     protected void onMissionButtonClick() {
         if (waypointPlanner != null && waypointPlanner.isPlanningActive()) {
-            waypointPlanner.openPlanningMenu();
+            waypointPlanner.toggleDrawer();
             return;
         }
         showMissionTypeDialog();
@@ -340,6 +342,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                         } else {
                             waypointPlanner.clearPlanning();
                         }
+                        waypointPlanner.bindDrawer(waypointMissionDrawerShell);
                         waypointPlanner.startWaypointPlanning();
                     } else {
                         Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();

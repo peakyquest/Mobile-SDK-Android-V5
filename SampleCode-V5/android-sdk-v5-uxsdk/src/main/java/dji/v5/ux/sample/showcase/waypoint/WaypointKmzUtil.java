@@ -1,5 +1,7 @@
 package dji.v5.ux.sample.showcase.waypoint;
 
+import androidx.annotation.Nullable;
+
 import com.dji.wpmzsdk.common.data.Template;
 import com.dji.wpmzsdk.common.utils.kml.model.WaypointActionType;
 
@@ -86,14 +88,16 @@ public final class WaypointKmzUtil {
         return config;
     }
 
-    public static Template createTemplate(List<WaypointPlanItem> waypointInfoModels) {
+    public static Template createTemplate(List<WaypointPlanItem> waypointInfoModels,
+                                          @Nullable WaypointMissionGlobals globals) {
         Template template = new Template();
-        WaylineTemplateWaypointInfo waypointInfo = createTemplateWaypointInfo(waypointInfoModels);
+        WaylineTemplateWaypointInfo waypointInfo = createTemplateWaypointInfo(waypointInfoModels, globals);
         template.setWaypointInfo(waypointInfo);
         WaylineCoordinateParam coordinateParam = transCoordinateParamFrom();
         template.setCoordinateParam(coordinateParam);
         template.setUseGlobalTransitionalSpeed(true);
-        template.setAutoFlightSpeed(DEF_AUTO_FLIGHT_SPEED);
+        double autoSpeed = globals != null ? globals.globalSpeed : DEF_AUTO_FLIGHT_SPEED;
+        template.setAutoFlightSpeed(autoSpeed);
         template.setPayloadParam(new ArrayList<>());
         return template;
     }
@@ -107,7 +111,8 @@ public final class WaypointKmzUtil {
         return coordinateParam;
     }
 
-    public static WaylineTemplateWaypointInfo createTemplateWaypointInfo(List<WaypointPlanItem> waypointInfoModels) {
+    public static WaylineTemplateWaypointInfo createTemplateWaypointInfo(List<WaypointPlanItem> waypointInfoModels,
+                                                                         @Nullable WaypointMissionGlobals globals) {
         WaylineLocationCoordinate3D poiLocation = new WaylineLocationCoordinate3D();
         List<WaylineWaypoint> waypoints = new ArrayList<>();
         for (WaypointPlanItem infoModel : waypointInfoModels) {
@@ -115,12 +120,17 @@ public final class WaypointKmzUtil {
             poiLocation = infoModel.getWaylineWaypoint().getYawParam().getPoiLocation();
         }
 
+        WaylineWaypointTurnMode turnMode = WaylineWaypointTurnMode.TO_POINT_AND_STOP_WITH_DISCONTINUITY_CURVATURE;
+        if (globals != null && globals.globalTurnMode != null) {
+            turnMode = globals.globalTurnMode;
+        }
+
         WaylineTemplateWaypointInfo waypointInfo = new WaylineTemplateWaypointInfo();
         waypointInfo.setWaypoints(waypoints);
         waypointInfo.setActionGroups(transformActionsFrom(waypointInfoModels));
         waypointInfo.setGlobalFlightHeight(DEF_GLOBAL_FLIGHT_HEIGHT);
         waypointInfo.setIsGlobalFlightHeightSet(true);
-        waypointInfo.setGlobalTurnMode(WaylineWaypointTurnMode.TO_POINT_AND_STOP_WITH_DISCONTINUITY_CURVATURE);
+        waypointInfo.setGlobalTurnMode(turnMode);
         waypointInfo.setUseStraightLine(true);
         waypointInfo.setIsTemplateGlobalTurnModeSet(true);
         WaylineWaypointYawParam yawParam = new WaylineWaypointYawParam();
@@ -200,6 +210,9 @@ public final class WaypointKmzUtil {
                 return transAircraftStay(actionValue);
             case CAMERA_ZOOM:
                 return transCameraZoom(actionValue);
+            case ROTATE_AIRCRAFT:
+                // WPML aircraft-yaw action types vary by aircraft; pause at waypoint as a safe fallback.
+                return transAircraftStay(actionValue != null ? actionValue : 5);
             default:
                 return null;
         }

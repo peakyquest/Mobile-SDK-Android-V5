@@ -1250,4 +1250,42 @@
         <item>Start mission (wayline 0)</item>
         <item>Clear &amp; exit planning</item>
     </string-array>
+
+    <string name="uxsdk_waypoint_drawer_title">Waypoint mission</string>
+    <string name="uxsdk_waypoint_drawer_close">Close panel</string>
+    <string name="uxsdk_waypoint_drawer_prev">Prev</string>
+    <string name="uxsdk_waypoint_drawer_next">Next</string>
+    <string name="uxsdk_waypoint_drawer_section_wp">Waypoint</string>
+    <string name="uxsdk_waypoint_drawer_heading">Heading mode</string>
+    <string name="uxsdk_waypoint_drawer_action">Action at waypoint</string>
+    <string name="uxsdk_waypoint_drawer_turn">Turn mode (path)</string>
+    <string name="uxsdk_waypoint_drawer_apply_wp">Apply to waypoint</string>
+    <string name="uxsdk_waypoint_drawer_summary_title">Mission summary</string>
+    <string name="uxsdk_waypoint_drawer_upload">Upload mission</string>
+    <string name="uxsdk_waypoint_drawer_start">Start mission</string>
+    <string name="uxsdk_waypoint_drawer_exit_mission">Exit planning</string>
+    <string name="uxsdk_waypoint_drawer_api_note">Upload/start use WaypointMissionManager (KMZ). MSDK v4-style WaypointMissionOperator events are not used here.</string>
+    <string name="uxsdk_waypoint_drawer_nav_sep"> / </string>
+    <string name="uxsdk_waypoint_drawer_summary_total">Total waypoints: </string>
+    <string name="uxsdk_waypoint_drawer_summary_distance">Est. distance: </string>
+    <string name="uxsdk_waypoint_drawer_summary_eta">Est. flight time: </string>
+    <string name="uxsdk_waypoint_drawer_summary_na">—</string>
+    <string name="uxsdk_waypoint_drawer_summary_m"> m</string>
+    <string name="uxsdk_waypoint_drawer_summary_s"> s</string>
+    <string name="uxsdk_waypoint_drawer_wp_prefix">Waypoint </string>
+
+    <string-array name="uxsdk_waypoint_drawer_heading_labels">
+        <item>Auto (follow path)</item>
+        <item>Manual</item>
+        <item>Toward POI</item>
+    </string-array>
+
+    <string-array name="uxsdk_waypoint_drawer_action_labels">
+        <item>None</item>
+        <item>Take photo</item>
+        <item>Start record</item>
+        <item>Stop record</item>
+        <item>Rotate aircraft</item>
+        <item>Hover</item>
+    </string-array>
 </resources>
