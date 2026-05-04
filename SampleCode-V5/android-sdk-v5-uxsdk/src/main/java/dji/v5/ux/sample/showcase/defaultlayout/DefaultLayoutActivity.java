@@ -31,6 +31,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,6 +88,8 @@ import dji.v5.ux.gimbal.GimbalFineTuneWidget;
 import dji.v5.ux.map.MapWidget;
 import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
+import dji.v5.ux.mapkit.core.models.DJILatLng;
+import dji.v5.ux.sample.showcase.waypoint.WaypointPlanner;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegate;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegateKt;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreStyle;
@@ -130,6 +133,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     protected LinearLayout mapControlsContainer;
     protected ImageView btnMapType;
     protected ImageView btnFlyZones;
+    protected ImageView btnMission;
+    /** Waypoint planning on the map (KMZ upload / start uses {@link dji.v5.manager.aircraft.waypoint3.WaypointMissionManager}). */
+    private WaypointPlanner waypointPlanner;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -203,6 +209,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         mapControlsContainer = findViewById(R.id.map_controls_container);
         btnMapType = findViewById(R.id.btn_map_type);
         btnFlyZones = findViewById(R.id.btn_fly_zones);
+        btnMission = findViewById(R.id.btn_mission);
         mapWidget = findViewById(R.id.widget_map);
         mapMiniLayoutParams = new ConstraintLayout.LayoutParams(
                 (ConstraintLayout.LayoutParams) mapWidget.getLayoutParams());
@@ -227,9 +234,8 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             if (uiSetting != null) {
                 uiSetting.setZoomControlsEnabled(false);
             }
-            // ── Swap: map-click → expand map ─────────────────────────────────
-            map.setOnMapClickListener(latLng -> onViewClick(mapWidget));
-            // ─────────────────────────────────────────────────────────────────
+            // Map tap: waypoint planning when active, otherwise swap map / FPV layout.
+            map.setOnMapClickListener(this::handleMapWidgetMapClick);
         });
         mapWidget.onCreate(savedInstanceState);
 
@@ -295,6 +301,51 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         if (btnFlyZones != null) {
             btnFlyZones.setOnClickListener(v -> showSelectFlyZoneDialog());
         }
+        if (btnMission != null) {
+            btnMission.setOnClickListener(v -> onMissionButtonClick());
+        }
+    }
+
+    /**
+     * Mission: choose type (waypoint / hot point / custom). While waypoint planning is active,
+     * opens the plan menu (settings, save KMZ, upload, start, exit).
+     */
+    protected void onMissionButtonClick() {
+        if (waypointPlanner != null && waypointPlanner.isPlanningActive()) {
+            waypointPlanner.openPlanningMenu();
+            return;
+        }
+        showMissionTypeDialog();
+    }
+
+    private void handleMapWidgetMapClick(DJILatLng latLng) {
+        if (waypointPlanner != null && waypointPlanner.onMapClick(latLng)) {
+            return;
+        }
+        onViewClick(mapWidget);
+    }
+
+    private void showMissionTypeDialog() {
+        String[] types = {
+                getString(R.string.uxsdk_mission_type_waypoint),
+                getString(R.string.uxsdk_mission_type_hotpoint),
+                getString(R.string.uxsdk_mission_type_custom)
+        };
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.uxsdk_mission_type_title)
+                .setItems(types, (dialog, which) -> {
+                    if (which == 0) {
+                        if (waypointPlanner == null) {
+                            waypointPlanner = new WaypointPlanner(this, mapWidget);
+                        } else {
+                            waypointPlanner.clearPlanning();
+                        }
+                        waypointPlanner.startWaypointPlanning();
+                    } else {
+                        Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
     }
 
     private void showMapTypeDialog() {
@@ -339,6 +390,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (waypointPlanner != null) {
+            waypointPlanner.clearPlanning();
+        }
         mapWidget.onDestroy();
         MediaDataCenter.getInstance().getCameraStreamManager()
                 .removeAvailableCameraUpdatedListener(availableCameraUpdatedListener);

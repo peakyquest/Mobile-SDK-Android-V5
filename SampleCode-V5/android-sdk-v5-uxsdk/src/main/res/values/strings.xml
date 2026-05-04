@@ -1196,4 +1196,58 @@
     <string name="uxsdk_hdmi_system_setting_mode_camera">Vista de cámara limpia</string>
 
     <string name="uxsdk_assistant_video_empty_text">View after take off</string>
+
+    <string name="uxsdk_default_layout_mission">Mission</string>
+    <string name="uxsdk_default_layout_mission_content_description">Mission</string>
+
+    <string name="uxsdk_mission_type_title">Choose mission type</string>
+    <string name="uxsdk_mission_type_waypoint">Waypoint</string>
+    <string name="uxsdk_mission_type_hotpoint">Hot point</string>
+    <string name="uxsdk_mission_type_custom">Custom</string>
+    <string name="uxsdk_mission_type_not_implemented">Not implemented in this sample.</string>
+
+    <string name="uxsdk_waypoint_tap_map_hint">Waypoint planning: tap the map to add each waypoint.</string>
+    <string name="uxsdk_waypoint_plan_menu_title">Waypoint plan</string>
+    <string name="uxsdk_waypoint_discard_title">Exit planning?</string>
+    <string name="uxsdk_waypoint_discard_message">All planned waypoints on the map will be removed.</string>
+    <string name="uxsdk_mission_globals_title">Mission settings</string>
+    <string name="uxsdk_mission_finish_action">Finish action</string>
+    <string name="uxsdk_mission_rc_lost_action">RC signal lost</string>
+    <string name="uxsdk_waypoint_dialog_title">Waypoint parameters</string>
+    <string name="uxsdk_waypoint_dialog_heading_add">Add waypoint</string>
+    <string name="uxsdk_waypoint_dialog_heading_edit">Edit waypoint</string>
+    <string name="uxsdk_waypoint_save">Save</string>
+    <string name="uxsdk_waypoint_delete">Delete</string>
+    <string name="uxsdk_waypoint_delete_confirm_title">Delete waypoint?</string>
+    <string name="uxsdk_waypoint_delete_confirm_message">This waypoint will be removed from the plan.</string>
+    <string name="uxsdk_waypoint_updated">Waypoint updated</string>
+    <string name="uxsdk_waypoint_deleted">Waypoint deleted</string>
+    <string name="uxsdk_waypoint_error_generic">Something went wrong: %s</string>
+    <string name="uxsdk_waypoint_error_invalid_state">Could not open this waypoint (invalid data).</string>
+    <!-- No format specifiers: avoids String.format / lint issues; numbers appended in code. -->
+    <string name="uxsdk_waypoint_coord_lat_prefix">Lat </string>
+    <string name="uxsdk_waypoint_coord_lon_prefix">, Lon </string>
+    <string name="uxsdk_waypoint_altitude_m">Altitude (m)</string>
+    <string name="uxsdk_waypoint_speed_ms">Speed (m/s)</string>
+    <string name="uxsdk_waypoint_gimbal_pitch">Gimbal pitch (deg)</string>
+    <string name="uxsdk_waypoint_use_global_speed">Use mission global speed</string>
+    <string name="uxsdk_waypoint_global_speed_ms">Mission global speed (m/s)</string>
+    <string name="uxsdk_waypoint_add_confirm">Add waypoint</string>
+    <string name="uxsdk_waypoint_marker_title">WP %d</string>
+    <string name="uxsdk_waypoint_added">Waypoint added</string>
+    <string name="uxsdk_waypoint_need_one">Add at least one waypoint on the map first.</string>
+    <string name="uxsdk_waypoint_kmz_saved">KMZ saved:\n%s</string>
+    <string name="uxsdk_waypoint_upload_ok">Upload to aircraft started (see progress in DJI app if available).</string>
+    <string name="uxsdk_waypoint_upload_fail">Upload failed: %s</string>
+    <string name="uxsdk_waypoint_save_first">Generate KMZ first (use Save KMZ in the plan menu).</string>
+    <string name="uxsdk_waypoint_start_ok">Start mission requested.</string>
+    <string name="uxsdk_waypoint_start_fail">Start failed: %s</string>
+
+    <string-array name="uxsdk_waypoint_plan_menu">
+        <item>Mission settings (finish / RC lost / global speed)</item>
+        <item>Save KMZ to app cache</item>
+        <item>Upload KMZ to aircraft</item>
+        <item>Start mission (wayline 0)</item>
+        <item>Clear &amp; exit planning</item>
+    </string-array>
 </resources>

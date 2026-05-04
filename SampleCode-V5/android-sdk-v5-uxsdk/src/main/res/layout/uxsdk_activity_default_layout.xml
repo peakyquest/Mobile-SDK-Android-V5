@@ -327,9 +327,19 @@
                 android:id="@+id/btn_fly_zones"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
+                android:layout_marginBottom="12dp"
                 android:background="@drawable/uxsdk_selector_icon_bg"
                 android:src="@drawable/uxsdk_ic_flyzone_locked"
                 android:padding="8dp"/>
+
+            <ImageView
+                android:id="@+id/btn_mission"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/uxsdk_selector_icon_bg"
+                android:contentDescription="@string/uxsdk_default_layout_mission_content_description"
+                android:padding="8dp"
+                android:src="@drawable/uxsdk_fpv_hsi_waypoint" />
 
         </LinearLayout>
 
