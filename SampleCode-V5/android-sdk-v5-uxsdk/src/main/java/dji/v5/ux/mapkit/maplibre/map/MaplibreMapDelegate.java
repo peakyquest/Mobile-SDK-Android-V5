@@ -760,6 +760,16 @@ public class MaplibreMapDelegate extends DJIBaseMap implements DJIMap,
         }
     }
 
+    /**
+     * Applies a MapLibre style JSON URL (for example {@link MaplibreStyle} constants).
+     * Performs the same teardown and {@link Style.OnStyleLoaded} handling as {@link #setMapType(MapType)}.
+     */
+    public void setMapStyleUri(@NonNull String styleUri) {
+        stoppingWorld = true;
+        clearSourcesAndLayers();
+        mapboxMap.setStyle(styleUri, this);
+    }
+
     @Override
     public void onStyleLoaded(@NonNull Style style) {
         this.style = style;

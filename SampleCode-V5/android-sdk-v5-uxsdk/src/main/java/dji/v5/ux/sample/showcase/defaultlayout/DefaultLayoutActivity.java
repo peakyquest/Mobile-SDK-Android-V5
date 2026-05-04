@@ -87,6 +87,7 @@ import dji.v5.ux.gimbal.GimbalFineTuneWidget;
 import dji.v5.ux.map.MapWidget;
 import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
+import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegate;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreStyle;
 import dji.v5.ux.mapkit.maplibre.provider.MaplibreProvider;
 import dji.v5.ux.training.simulatorcontrol.SimulatorControlWidget;
@@ -296,14 +297,19 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void showMapTypeDialog() {
-        String[] types = {"Normal", "Satellite", "Hybrid"};
-        DJIMap.MapType[] mapTypes = {DJIMap.MapType.NORMAL, DJIMap.MapType.SATELLITE, DJIMap.MapType.HYBRID};
+        String[] labels = {"Normal", "Satellite", "Hybrid"};
+        String[] styleUrls = {
+                MaplibreStyle.MAPBOX_STREETS,
+                MaplibreStyle.SATELLITE,
+                MaplibreStyle.SATELLITE_STREETS
+        };
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Map Type");
-        builder.setItems(types, (dialog, which) -> {
-            if (mapWidget.getMap() != null) {
-                mapWidget.getMap().setMapType(mapTypes[which]);
+        builder.setTitle("Map style");
+        builder.setItems(labels, (dialog, which) -> {
+            DJIMap map = mapWidget.getMap();
+            if (map instanceof MaplibreMapDelegate) {
+                ((MaplibreMapDelegate) map).setMapStyleUri(styleUrls[which]);
             }
         });
         builder.show();
@@ -327,7 +333,6 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     private void toggleRightDrawer() {
         mDrawerLayout.openDrawer(GravityCompat.END);
     }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
