@@ -88,6 +88,7 @@ import dji.v5.ux.map.MapWidget;
 import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegate;
+import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegateKt;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreStyle;
 import dji.v5.ux.mapkit.maplibre.provider.MaplibreProvider;
 import dji.v5.ux.training.simulatorcontrol.SimulatorControlWidget;
@@ -310,6 +311,8 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             DJIMap map = mapWidget.getMap();
             if (map instanceof MaplibreMapDelegate) {
                 ((MaplibreMapDelegate) map).setMapStyleUri(styleUrls[which]);
+            } else if (map instanceof MaplibreMapDelegateKt) {
+                ((MaplibreMapDelegateKt) map).setMapStyleUri(styleUrls[which]);
             }
         });
         builder.show();
