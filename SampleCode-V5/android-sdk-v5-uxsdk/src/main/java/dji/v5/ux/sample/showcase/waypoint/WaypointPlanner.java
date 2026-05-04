@@ -80,8 +80,8 @@ public final class WaypointPlanner {
     private View drawerScrim;
     private View drawerSlide;
     private TextView navLabel;
-    private Button btnPrev;
-    private Button btnNext;
+    private ImageButton btnPrev;
+    private ImageButton btnNext;
     private EditText etAltitude;
     private EditText etSpeed;
     private EditText etGimbal;
@@ -491,6 +491,8 @@ public final class WaypointPlanner {
                     + activity.getString(R.string.uxsdk_waypoint_drawer_summary_na));
             btnPrev.setEnabled(false);
             btnNext.setEnabled(false);
+            btnPrev.setAlpha(0.35f);
+            btnNext.setAlpha(0.35f);
             return;
         }
         int human = selectedWaypointIndex + 1;
@@ -498,8 +500,12 @@ public final class WaypointPlanner {
                 + human
                 + activity.getString(R.string.uxsdk_waypoint_drawer_nav_sep)
                 + n);
-        btnPrev.setEnabled(selectedWaypointIndex > 0);
-        btnNext.setEnabled(selectedWaypointIndex < n - 1);
+        boolean canPrev = selectedWaypointIndex > 0;
+        boolean canNext = selectedWaypointIndex < n - 1;
+        btnPrev.setEnabled(canPrev);
+        btnNext.setEnabled(canNext);
+        btnPrev.setAlpha(canPrev ? 1f : 0.35f);
+        btnNext.setAlpha(canNext ? 1f : 0.35f);
     }
 
     private void stepSelection(int delta) {

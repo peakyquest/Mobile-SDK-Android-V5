@@ -383,7 +383,7 @@
     <dimen name="uxsdk_505_dp">505dp</dimen>
     <dimen name="uxsdk_50_dp">50dp</dimen>
     <dimen name="uxsdk_510_dp">510dp</dimen>
-    <dimen name="uxsdk_waypoint_drawer_width">300dp</dimen>
+    <dimen name="uxsdk_waypoint_drawer_width">400dp</dimen>
     <dimen name="uxsdk_515_dp">515dp</dimen>
     <dimen name="uxsdk_51_dp">51dp</dimen>
     <dimen name="uxsdk_520_dp">520dp</dimen>
