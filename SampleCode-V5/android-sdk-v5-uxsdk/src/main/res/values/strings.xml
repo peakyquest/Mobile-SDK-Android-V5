@@ -1288,4 +1288,7 @@
         <item>Rotate aircraft</item>
         <item>Hover</item>
     </string-array>
+
+    <string name="uxsdk_waypoint_tutorial_title">Waypoint Mission Quick Guide</string>
+    <string name="uxsdk_waypoint_tutorial_message">1) Tap on the map to add waypoints.\n2) Use the left/right arrows to switch selected waypoint.\n3) Edit altitude, speed, heading, action, and turn mode, then tap Apply.\n4) Expand Mission settings for finish action, RC lost action, and global speed.\n5) Review summary (count, distance, ETA).\n6) Upload mission, then Start (Start is enabled only after successful upload).</string>
 </resources>

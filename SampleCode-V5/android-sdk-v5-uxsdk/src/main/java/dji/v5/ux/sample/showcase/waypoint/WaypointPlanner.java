@@ -1,6 +1,7 @@
 package dji.v5.ux.sample.showcase.waypoint;
 
 import android.app.AlertDialog;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.graphics.Color;
 import android.view.View;
@@ -66,6 +67,8 @@ import dji.v5.ux.core.util.ViewUtil;
 public final class WaypointPlanner {
 
     private static final String TAG = "WaypointPlanner";
+    private static final String PREFS_WAYPOINT_TUTORIAL = "uxsdk_waypoint_tutorial_prefs";
+    private static final String KEY_DRAWER_TUTORIAL_SHOWN = "drawer_tutorial_shown";
     private static final int MAX_WAYPOINTS = 99;
     private static final double MIN_ALTITUDE_M = 5.0;
     private static final double MAX_ALTITUDE_M = 500.0;
@@ -301,6 +304,7 @@ public final class WaypointPlanner {
         if (drawerShell != null) {
             populateMissionSpinnersFromGlobals();
             showDrawer(true);
+            maybeShowFirstTimeTutorial();
         }
     }
 
@@ -929,6 +933,26 @@ public final class WaypointPlanner {
         if (uploadProgress != null) {
             uploadProgress.setVisibility(View.INVISIBLE);
             uploadProgress.setProgress(0);
+        }
+    }
+
+    private void maybeShowFirstTimeTutorial() {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences(PREFS_WAYPOINT_TUTORIAL, AppCompatActivity.MODE_PRIVATE);
+            if (prefs.getBoolean(KEY_DRAWER_TUTORIAL_SHOWN, false)) {
+                return;
+            }
+            if (activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
+            prefs.edit().putBoolean(KEY_DRAWER_TUTORIAL_SHOWN, true).apply();
+            new AlertDialog.Builder(activity)
+                    .setTitle(R.string.uxsdk_waypoint_tutorial_title)
+                    .setMessage(R.string.uxsdk_waypoint_tutorial_message)
+                    .setPositiveButton(R.string.uxsdk_app_ok, null)
+                    .show();
+        } catch (Exception e) {
+            LogUtils.e(TAG, "maybeShowFirstTimeTutorial: " + logEx(e));
         }
     }
 
