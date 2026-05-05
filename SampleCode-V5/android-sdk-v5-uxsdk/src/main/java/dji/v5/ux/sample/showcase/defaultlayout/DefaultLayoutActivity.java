@@ -145,7 +145,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     private CameraLensType lastLensType = CameraLensType.UNKNOWN;
 
     // ── Swap state ────────────────────────────────────────────────────────────
-    private boolean isMapMini = true; // true → map is the small overlay
+    private static final long SWAP_DEBOUNCE_MS = 250L;
+    private ViewMode currentViewMode = ViewMode.FPV_FULL;
+    private long lastSwapRequestUptimeMs = 0L;
     private ConstraintLayout.LayoutParams mapMiniLayoutParams;
     private ConstraintLayout.LayoutParams fpvFullLayoutParams;
     // ─────────────────────────────────────────────────────────────────────────
@@ -175,6 +177,12 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 public void onCameraStreamEnableUpdate(
                         @NonNull Map<ComponentIndexType, Boolean> cameraStreamEnableMap) { }
             };
+
+    private enum ViewMode {
+        FPV_FULL,
+        MAP_FULL,
+        TRANSITIONING
+    }
     //endregion
 
     //region Lifecycle
@@ -236,7 +244,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             if (uiSetting != null) {
                 uiSetting.setZoomControlsEnabled(false);
             }
-            // Map tap: waypoint planning when active, otherwise swap map / FPV layout.
+            // Map tap: expand mini-map first; waypoint taps only when map is already full-screen.
             map.setOnMapClickListener(this::handleMapWidgetMapClick);
         });
         mapWidget.onCreate(savedInstanceState);
@@ -256,21 +264,21 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void initClickListener() {
-        // ── Swap: fpvParentView click → revert to FPV-big layout ─────────────
-        fpvParentView.setOnClickListener(v -> onViewClick(fpvParentView));
-        // ─────────────────────────────────────────────────────────────────────
+        // ── Swap: mini FPV click → revert to FPV-big layout ──────────────────
+        fpvParentView.setOnClickListener(v -> requestViewMode(ViewMode.FPV_FULL));
+        // ──────────────────────────────────────────────────────────────────────
 
         primaryFpvWidget.setOnClickListener(v -> {
-            if (!isMapMini) {
-                onViewClick(fpvParentView);
+            if (isMapExpanded()) {
+                requestViewMode(ViewMode.FPV_FULL);
             }
         });
 
         secondaryFPVWidget.setOnClickListener(v -> {
-            if (isMapMini) {
+            if (isFpvExpanded()) {
                 swapVideoSource();
             } else {
-                onViewClick(fpvParentView);
+                requestViewMode(ViewMode.FPV_FULL);
             }
         });
 
@@ -321,10 +329,15 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void handleMapWidgetMapClick(DJILatLng latLng) {
+        // While the map is still the small overlay, a tap must expand it — not add a waypoint.
+        // Waypoint planning would otherwise consume the event and block expansion after FPV↔map swaps.
+        if (isFpvExpanded()) {
+            requestViewMode(ViewMode.MAP_FULL);
+            return;
+        }
         if (waypointPlanner != null && waypointPlanner.onMapClick(latLng)) {
             return;
         }
-        onViewClick(mapWidget);
     }
 
     private void showMissionTypeDialog() {
@@ -450,34 +463,42 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     // region Map ↔ FPV swap
     // ══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Central dispatcher for the layout swap.
-     *
-     * • Tap mini-map (isMapMini == true) → map expands to full screen,
-     * fpvParentView shrinks to thumbnail.
-     * • Tap mini-fpv (isMapMini == false) → fpvParentView returns to full screen,
-     * mapWidget shrinks back to thumbnail.
-     *
-     * All other click targets (the large background view) are intentionally
-     * ignored so that normal map-pan / FPV-interaction events pass through.
-     */
-    private void onViewClick(View view) {
-        if (view == fpvParentView && !isMapMini) {
-            // ── Revert: FPV grows back, map shrinks ───────────────────────────
-            applySwapLayout(false);
-            bringThumbnailToFront(mapWidget);
-            fpvInteractionWidget.setInteractionEnabled(true);
-            isMapMini = true;
-            updateWidgetsVisibility(false);
+    private void requestViewMode(@NonNull ViewMode targetMode) {
+        if (targetMode == ViewMode.TRANSITIONING || currentViewMode == ViewMode.TRANSITIONING) {
+            return;
+        }
+        if (currentViewMode == targetMode) {
+            return;
+        }
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastSwapRequestUptimeMs < SWAP_DEBOUNCE_MS) {
+            return;
+        }
+        lastSwapRequestUptimeMs = now;
+        applyViewMode(targetMode);
+    }
 
-        } else if (view == mapWidget && isMapMini) {
-            // ── Expand: map grows, FPV shrinks ────────────────────────────────
-            applySwapLayout(true);
+    private boolean isMapExpanded() {
+        return currentViewMode == ViewMode.MAP_FULL;
+    }
+
+    private boolean isFpvExpanded() {
+        return currentViewMode == ViewMode.FPV_FULL;
+    }
+
+    private void applyViewMode(@NonNull ViewMode targetMode) {
+        currentViewMode = ViewMode.TRANSITIONING;
+        boolean mapExpanded = targetMode == ViewMode.MAP_FULL;
+        applySwapLayout(mapExpanded);
+        if (mapExpanded) {
             bringThumbnailToFront(fpvParentView);
             fpvInteractionWidget.setInteractionEnabled(false);
-            isMapMini = false;
-            updateWidgetsVisibility(true);
+        } else {
+            bringThumbnailToFront(mapWidget);
+            fpvInteractionWidget.setInteractionEnabled(true);
         }
+        updateWidgetsVisibility(mapExpanded);
+        currentViewMode = targetMode;
     }
 
     private void updateWidgetsVisibility(boolean isMapExpanded) {

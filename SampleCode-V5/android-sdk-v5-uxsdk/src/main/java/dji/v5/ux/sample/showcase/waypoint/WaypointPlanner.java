@@ -1,6 +1,7 @@
 package dji.v5.ux.sample.showcase.waypoint;
 
 import android.app.AlertDialog;
+import android.graphics.drawable.Drawable;
 import android.graphics.Color;
 import android.view.View;
 import android.widget.AdapterView;
@@ -16,6 +17,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.dji.wpmzsdk.common.utils.kml.model.WaypointActionType;
 import com.dji.wpmzsdk.manager.WPMZManager;
@@ -48,11 +50,14 @@ import dji.v5.utils.common.LogUtils;
 import dji.v5.ux.R;
 import dji.v5.ux.map.MapWidget;
 import dji.v5.ux.mapkit.core.maps.DJIMap;
+import dji.v5.ux.mapkit.core.models.DJIBitmapDescriptor;
+import dji.v5.ux.mapkit.core.models.DJIBitmapDescriptorFactory;
 import dji.v5.ux.mapkit.core.models.DJILatLng;
 import dji.v5.ux.mapkit.core.models.annotations.DJIMarker;
 import dji.v5.ux.mapkit.core.models.annotations.DJIMarkerOptions;
 import dji.v5.ux.mapkit.core.models.annotations.DJIPolyline;
 import dji.v5.ux.mapkit.core.models.annotations.DJIPolylineOptions;
+import dji.v5.ux.core.util.ViewUtil;
 
 /**
  * Interactive waypoint planning on a {@link MapWidget}: add points, configure each in the side panel,
@@ -61,6 +66,15 @@ import dji.v5.ux.mapkit.core.models.annotations.DJIPolylineOptions;
 public final class WaypointPlanner {
 
     private static final String TAG = "WaypointPlanner";
+    private static final int MAX_WAYPOINTS = 99;
+    private static final double MIN_ALTITUDE_M = 5.0;
+    private static final double MAX_ALTITUDE_M = 500.0;
+    private static final double MIN_SPEED_MPS = 1.0;
+    private static final double MAX_SPEED_MPS = 15.0;
+    private static final double MIN_GLOBAL_SPEED_MPS = 1.0;
+    private static final double MAX_GLOBAL_SPEED_MPS = 15.0;
+    private static final double MIN_GIMBAL_PITCH_DEG = -120.0;
+    private static final double MAX_GIMBAL_PITCH_DEG = 45.0;
 
     /** Spinner index → {@link WaylineWaypointYawMode#find(int)} index (matches sample arrays.xml order). */
     private static final int[] HEADING_SDK_FIND_INDEX = {0, 2, 3};
@@ -71,6 +85,8 @@ public final class WaypointPlanner {
     private final WaypointMissionGlobals globals = new WaypointMissionGlobals();
     private final List<WaypointPlanItem> planItems = new ArrayList<>();
     private final List<DJIMarker> markers = new ArrayList<>();
+    @Nullable
+    private DJIBitmapDescriptor waypointMarkerIcon;
 
     private boolean planningActive;
     private DJIPolyline routePolyline;
@@ -105,6 +121,8 @@ public final class WaypointPlanner {
     private boolean missionSectionExpanded;
     private boolean planDirtySinceUpload;
     private boolean lastUploadSucceeded;
+    private boolean uploadInProgress;
+    private boolean startInProgress;
 
     private List<WaylineFinishedAction> finishChoices = new ArrayList<>();
     private List<WaylineExitOnRCLostAction> lostChoices = new ArrayList<>();
@@ -275,7 +293,10 @@ public final class WaypointPlanner {
         attachMarkerClickListenerSafe();
         planDirtySinceUpload = true;
         lastUploadSucceeded = false;
+        uploadInProgress = false;
+        startInProgress = false;
         updateStartButtonState();
+        updateUploadUiIdle();
         Toast.makeText(activity, R.string.uxsdk_waypoint_tap_map_hint, Toast.LENGTH_LONG).show();
         if (drawerShell != null) {
             populateMissionSpinnersFromGlobals();
@@ -357,6 +378,10 @@ public final class WaypointPlanner {
         selectedWaypointIndex = -1;
         planDirtySinceUpload = true;
         lastUploadSucceeded = false;
+        uploadInProgress = false;
+        startInProgress = false;
+        updateUploadUiIdle();
+        updateActionButtonsState();
         refreshDrawerSummaryOnly();
     }
 
@@ -445,6 +470,7 @@ public final class WaypointPlanner {
         refreshDrawerSummaryOnly();
         syncMissionSpinnersQuiet();
         updateStartButtonState();
+        updateActionButtonsState();
     }
 
     private void syncMissionSpinnersQuiet() {
@@ -629,7 +655,8 @@ public final class WaypointPlanner {
             return;
         }
         try {
-            globals.globalSpeed = parseDouble(safeEt(etGlobalSpeed), globals.globalSpeed);
+            globals.globalSpeed = parseAndClamp(etGlobalSpeed, globals.globalSpeed,
+                    MIN_GLOBAL_SPEED_MPS, MAX_GLOBAL_SPEED_MPS, "global speed");
 
             WaypointPlanItem item = planItems.get(selectedWaypointIndex);
             WaylineWaypoint w = item.getWaylineWaypoint();
@@ -640,9 +667,9 @@ public final class WaypointPlanner {
             WaylineLocationCoordinate2D loc = w.getLocation();
             DJILatLng latLng = new DJILatLng(loc.getLatitude(), loc.getLongitude());
 
-            double height = parseDouble(safeEt(etAltitude), 30);
-            double speed = parseDouble(safeEt(etSpeed), globals.globalSpeed);
-            double gimbal = parseDouble(safeEt(etGimbal), -30);
+            double height = parseAndClamp(etAltitude, 30, MIN_ALTITUDE_M, MAX_ALTITUDE_M, "altitude");
+            double speed = parseAndClamp(etSpeed, globals.globalSpeed, MIN_SPEED_MPS, MAX_SPEED_MPS, "speed");
+            double gimbal = parseAndClamp(etGimbal, -30, MIN_GIMBAL_PITCH_DEG, MAX_GIMBAL_PITCH_DEG, "gimbal");
             applyGeometryAndMotion(w, latLng, height, speed, gimbal);
 
             int hi = spHeading.getSelectedItemPosition();
@@ -660,6 +687,7 @@ public final class WaypointPlanner {
             planDirtySinceUpload = true;
             lastUploadSucceeded = false;
             updateStartButtonState();
+            updateActionButtonsState();
             refreshDrawerSummaryOnly();
             Toast.makeText(activity, R.string.uxsdk_waypoint_updated, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
@@ -727,6 +755,14 @@ public final class WaypointPlanner {
             toastUi(R.string.uxsdk_waypoint_error_generic, "Map not ready");
             return;
         }
+        if (uploadInProgress || startInProgress) {
+            toastUi(R.string.uxsdk_waypoint_error_generic, "Mission action in progress");
+            return;
+        }
+        if (planItems.size() >= MAX_WAYPOINTS) {
+            toastUi(R.string.uxsdk_waypoint_error_generic, "Max waypoint limit reached (" + MAX_WAYPOINTS + ")");
+            return;
+        }
         try {
             WaypointPlanItem item = buildPlanItem(planItems.size(), latLng, 30, globals.globalSpeed, -30);
             item.setActionInfos(new ArrayList<>());
@@ -735,6 +771,7 @@ public final class WaypointPlanner {
             DJIMarker marker = map.addMarker(new DJIMarkerOptions()
                     .position(latLng)
                     .title(activity.getString(R.string.uxsdk_waypoint_marker_title, planItems.size()))
+                    .icon(getWaypointMarkerIcon())
                     .zIndex(4)
                     .setInfoWindowEnable(false));
             if (marker == null) {
@@ -749,6 +786,7 @@ public final class WaypointPlanner {
             refreshRoutePolyline(map);
             refreshDrawerUi();
             updateStartButtonState();
+            updateActionButtonsState();
             Toast.makeText(activity, R.string.uxsdk_waypoint_added, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             LogUtils.e(TAG, "addWaypointAt: " + logEx(e));
@@ -794,14 +832,22 @@ public final class WaypointPlanner {
     }
 
     private void uploadMissionFromDrawer() {
+        if (uploadInProgress || startInProgress) {
+            return;
+        }
         if (planItems.isEmpty()) {
             Toast.makeText(activity, R.string.uxsdk_waypoint_need_one, Toast.LENGTH_SHORT).show();
             return;
         }
+        globals.globalSpeed = parseAndClamp(etGlobalSpeed, globals.globalSpeed,
+                MIN_GLOBAL_SPEED_MPS, MAX_GLOBAL_SPEED_MPS, "global speed");
         saveKmzToCache(true);
         if (lastKmzPath == null) {
             return;
         }
+        uploadInProgress = true;
+        lastUploadSucceeded = false;
+        updateActionButtonsState();
         if (uploadProgress != null) {
             uploadProgress.setVisibility(View.VISIBLE);
             uploadProgress.setIndeterminate(false);
@@ -827,9 +873,11 @@ public final class WaypointPlanner {
                                 if (uploadProgress != null) {
                                     uploadProgress.setProgress(100);
                                 }
+                                uploadInProgress = false;
                                 planDirtySinceUpload = false;
                                 lastUploadSucceeded = true;
                                 updateStartButtonState();
+                                updateActionButtonsState();
                                 Toast.makeText(activity, R.string.uxsdk_waypoint_upload_ok, Toast.LENGTH_SHORT).show();
                             });
                         }
@@ -837,11 +885,11 @@ public final class WaypointPlanner {
                         @Override
                         public void onFailure(@NonNull IDJIError error) {
                             activity.runOnUiThread(() -> {
-                                if (uploadProgress != null) {
-                                    uploadProgress.setVisibility(View.INVISIBLE);
-                                }
+                                uploadInProgress = false;
+                                updateUploadUiIdle();
                                 lastUploadSucceeded = false;
                                 updateStartButtonState();
+                                updateActionButtonsState();
                                 Toast.makeText(activity,
                                         activity.getString(R.string.uxsdk_waypoint_upload_fail,
                                                 error != null ? error.description() : "?"),
@@ -850,6 +898,9 @@ public final class WaypointPlanner {
                         }
                     });
         } catch (Exception e) {
+            uploadInProgress = false;
+            updateUploadUiIdle();
+            updateActionButtonsState();
             LogUtils.e(TAG, "uploadMissionFromDrawer: " + logEx(e));
             toastUi(R.string.uxsdk_waypoint_error_generic, logEx(e));
         }
@@ -859,7 +910,26 @@ public final class WaypointPlanner {
         if (btnStart == null) {
             return;
         }
-        btnStart.setEnabled(lastUploadSucceeded && !planDirtySinceUpload);
+        btnStart.setEnabled(lastUploadSucceeded && !planDirtySinceUpload && !uploadInProgress && !startInProgress);
+    }
+
+    private void updateActionButtonsState() {
+        if (btnUpload != null) {
+            btnUpload.setEnabled(planningActive && !planItems.isEmpty() && !uploadInProgress && !startInProgress);
+        }
+        if (btnPrev != null) {
+            btnPrev.setEnabled(btnPrev.isEnabled() && !uploadInProgress && !startInProgress);
+        }
+        if (btnNext != null) {
+            btnNext.setEnabled(btnNext.isEnabled() && !uploadInProgress && !startInProgress);
+        }
+    }
+
+    private void updateUploadUiIdle() {
+        if (uploadProgress != null) {
+            uploadProgress.setVisibility(View.INVISIBLE);
+            uploadProgress.setProgress(0);
+        }
     }
 
     private void deleteWaypointAt(int index) {
@@ -885,6 +955,7 @@ public final class WaypointPlanner {
             planDirtySinceUpload = true;
             lastUploadSucceeded = false;
             updateStartButtonState();
+            updateActionButtonsState();
             refreshDrawerSummaryOnly();
             toastUi(R.string.uxsdk_waypoint_deleted);
         } catch (Exception e) {
@@ -1024,7 +1095,8 @@ public final class WaypointPlanner {
             return;
         }
         if (etGlobalSpeed != null) {
-            globals.globalSpeed = parseDouble(safeEt(etGlobalSpeed), globals.globalSpeed);
+            globals.globalSpeed = parseAndClamp(etGlobalSpeed, globals.globalSpeed,
+                    MIN_GLOBAL_SPEED_MPS, MAX_GLOBAL_SPEED_MPS, "global speed");
         }
         try {
             File out = new File(activity.getCacheDir(), "uxsdk_planned_waypoints.kmz");
@@ -1044,6 +1116,13 @@ public final class WaypointPlanner {
     }
 
     private void startLastUploadedMission() {
+        if (uploadInProgress || startInProgress) {
+            return;
+        }
+        if (planDirtySinceUpload || !lastUploadSucceeded) {
+            Toast.makeText(activity, R.string.uxsdk_waypoint_save_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
         try {
             if (lastKmzPath == null) {
                 saveKmzToCache(true);
@@ -1053,24 +1132,36 @@ public final class WaypointPlanner {
                 return;
             }
             String missionId = missionIdFromPath(lastKmzPath);
+            startInProgress = true;
+            updateActionButtonsState();
             WaypointMissionManager.getInstance().startMission(missionId, Collections.singletonList(0),
                     new CommonCallbacks.CompletionCallback() {
                         @Override
                         public void onSuccess() {
                             activity.runOnUiThread(() ->
-                                    Toast.makeText(activity, R.string.uxsdk_waypoint_start_ok, Toast.LENGTH_SHORT).show());
+                            {
+                                startInProgress = false;
+                                updateActionButtonsState();
+                                Toast.makeText(activity, R.string.uxsdk_waypoint_start_ok, Toast.LENGTH_SHORT).show();
+                            });
                         }
 
                         @Override
                         public void onFailure(@NonNull IDJIError error) {
                             activity.runOnUiThread(() ->
-                                    Toast.makeText(activity,
-                                            activity.getString(R.string.uxsdk_waypoint_start_fail,
-                                                    error != null ? error.description() : "?"),
-                                            Toast.LENGTH_LONG).show());
+                            {
+                                startInProgress = false;
+                                updateActionButtonsState();
+                                Toast.makeText(activity,
+                                        activity.getString(R.string.uxsdk_waypoint_start_fail,
+                                                error != null ? error.description() : "?"),
+                                        Toast.LENGTH_LONG).show();
+                            });
                         }
                     });
         } catch (Exception e) {
+            startInProgress = false;
+            updateActionButtonsState();
             LogUtils.e(TAG, "startLastUploadedMission: " + logEx(e));
             toastUi(R.string.uxsdk_waypoint_error_generic, logEx(e));
         }
@@ -1136,6 +1227,37 @@ public final class WaypointPlanner {
         } catch (NumberFormatException e) {
             return def;
         }
+    }
+
+    @Nullable
+    private DJIBitmapDescriptor getWaypointMarkerIcon() {
+        if (waypointMarkerIcon != null) {
+            return waypointMarkerIcon;
+        }
+        try {
+            Drawable d = ContextCompat.getDrawable(activity, R.drawable.uxsdk_ic_waypoint_marker);
+            if (d == null) {
+                return null;
+            }
+            waypointMarkerIcon = DJIBitmapDescriptorFactory.fromBitmap(ViewUtil.getBitmapFromVectorDrawable(d));
+            return waypointMarkerIcon;
+        } catch (Exception e) {
+            LogUtils.e(TAG, "getWaypointMarkerIcon: " + logEx(e));
+            return null;
+        }
+    }
+
+    private double parseAndClamp(@Nullable EditText et, double def, double min, double max, @NonNull String fieldName) {
+        double raw = parseDouble(safeEt(et), def);
+        double clamped = Math.max(min, Math.min(max, raw));
+        if (Math.abs(raw - clamped) > 1e-6) {
+            toastUi(R.string.uxsdk_waypoint_error_generic,
+                    fieldName + " clamped to " + String.format(Locale.US, "%.1f", clamped));
+        }
+        if (et != null) {
+            et.setText(String.format(Locale.US, "%.1f", clamped));
+        }
+        return clamped;
     }
 
     private void toastUi(int resId, Object... formatArgs) {
