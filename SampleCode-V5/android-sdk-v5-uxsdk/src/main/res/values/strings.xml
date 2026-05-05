@@ -1205,6 +1205,12 @@
     <string name="uxsdk_mission_type_hotpoint">Hot point</string>
     <string name="uxsdk_mission_type_custom">Custom</string>
     <string name="uxsdk_mission_type_not_implemented">Not implemented in this sample.</string>
+    <string name="uxsdk_mission_picker_waypoint_title">Waypoint Mission</string>
+    <string name="uxsdk_mission_picker_waypoint_subtitle">M3</string>
+    <string name="uxsdk_mission_picker_hotpoint_title">Hot Point</string>
+    <string name="uxsdk_mission_picker_hotpoint_subtitle">Coming soon</string>
+    <string name="uxsdk_mission_picker_mapping_title">Mapping</string>
+    <string name="uxsdk_mission_picker_mapping_subtitle">Coming soon</string>
 
     <string name="uxsdk_waypoint_tap_map_hint">Waypoint planning: tap the map to add each waypoint.</string>
     <string name="uxsdk_waypoint_plan_menu_title">Waypoint plan</string>

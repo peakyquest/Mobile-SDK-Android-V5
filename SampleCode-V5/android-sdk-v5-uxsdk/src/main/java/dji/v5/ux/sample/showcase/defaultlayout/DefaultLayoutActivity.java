@@ -27,6 +27,7 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -341,27 +342,44 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void showMissionTypeDialog() {
-        String[] types = {
-                getString(R.string.uxsdk_mission_type_waypoint),
-                getString(R.string.uxsdk_mission_type_hotpoint),
-                getString(R.string.uxsdk_mission_type_custom)
-        };
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.uxsdk_mission_type_title)
-                .setItems(types, (dialog, which) -> {
-                    if (which == 0) {
-                        if (waypointPlanner == null) {
-                            waypointPlanner = new WaypointPlanner(this, mapWidget);
-                        } else {
-                            waypointPlanner.clearPlanning();
-                        }
-                        waypointPlanner.bindDrawer(waypointMissionDrawerShell);
-                        waypointPlanner.startWaypointPlanning();
-                    } else {
-                        Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .show();
+        View root = LayoutInflater.from(this).inflate(R.layout.uxsdk_dialog_mission_type_picker, null, false);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(root)
+                .setCancelable(true)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        View waypointCard = root.findViewById(R.id.uxsdk_mission_picker_waypoint_card);
+        View hotpointCard = root.findViewById(R.id.uxsdk_mission_picker_hotpoint_card);
+        View mappingCard = root.findViewById(R.id.uxsdk_mission_picker_mapping_card);
+
+        waypointCard.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (btnMission != null) {
+                // Show custom waypoint image when mission mode is entered.
+                btnMission.setImageResource(R.drawable.way);
+                btnMission.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                btnMission.setPadding(6, 6, 6, 6);
+            }
+            if (waypointPlanner == null) {
+                waypointPlanner = new WaypointPlanner(this, mapWidget);
+            } else {
+                waypointPlanner.clearPlanning();
+            }
+            waypointPlanner.bindDrawer(waypointMissionDrawerShell);
+            waypointPlanner.startWaypointPlanning();
+        });
+        hotpointCard.setOnClickListener(v -> {
+            dialog.dismiss();
+            Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
+        });
+        mappingCard.setOnClickListener(v -> {
+            dialog.dismiss();
+            Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
+        });
+        dialog.show();
     }
 
     private void showMapTypeDialog() {
