@@ -1163,6 +1163,10 @@ public class MapWidget extends ConstraintLayoutWidget<Object> implements View.On
     public DJIMap getMap() {
         return map;
     }
+
+    public FlyZoneMapHelper getFlyZoneHelper() {
+        return flyZoneHelper;
+    }
     //endregion
 
     //region marker customizations

@@ -137,6 +137,7 @@ public class FlyZoneMapHelper {
     private AlertDialog alertDialog;
     private FlyZoneActionListener flyZoneActionListener;
     private boolean customUnlockZonesVisibility;
+    private final Map<FlyZoneCategory, Boolean> flyZoneVisibilityMap = new ConcurrentHashMap<>();
 
     //endregion
 
@@ -345,6 +346,7 @@ public class FlyZoneMapHelper {
     }
 
     public void hideShowFlyZoneOfMap(FlyZoneCategory flyZoneCategory, boolean isVisible) {
+        flyZoneVisibilityMap.put(flyZoneCategory, isVisible);
         switch (flyZoneCategory) {
             case RESTRICTED:
                 hideShowFlyZoneCircle(restrictedDJICircleMap, isVisible);
@@ -394,6 +396,11 @@ public class FlyZoneMapHelper {
     }
 
     private void initDefaults() {
+        flyZoneVisibilityMap.put(FlyZoneCategory.RESTRICTED, true);
+        flyZoneVisibilityMap.put(FlyZoneCategory.AUTHORIZATION, true);
+        flyZoneVisibilityMap.put(FlyZoneCategory.ENHANCED_WARNING, true);
+        flyZoneVisibilityMap.put(FlyZoneCategory.WARNING, true);
+
         flyZoneColorMap = new HashMap<>();
         flyZoneColorMap.put(FlyZoneCategory.WARNING, getColor(R.color.uxsdk_zone_warning));
         flyZoneColorMap.put(FlyZoneCategory.ENHANCED_WARNING, getColor(R.color.uxsdk_zone_warning_enhanced));
@@ -1141,6 +1148,14 @@ public class FlyZoneMapHelper {
         for (DJIMarker djiMarker : customUnlockMarkersSet) {
             djiMarker.setVisible(isVisible);
         }
+    }
+
+    public boolean isFlyZoneVisible(FlyZoneCategory flyZoneCategory) {
+        if (flyZoneVisibilityMap.containsKey(flyZoneCategory)) {
+            Boolean visible = flyZoneVisibilityMap.get(flyZoneCategory);
+            return visible != null && visible;
+        }
+        return true;
     }
 
     //endregion

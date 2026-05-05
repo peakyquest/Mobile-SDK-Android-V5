@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/uxsdk_waypoint_drawer_shell"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:elevation="18dp"
+    android:focusable="true"
+    android:visibility="gone">
+
+    <View
+        android:id="@+id/uxsdk_waypoint_drawer_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.35"
+        android:background="@android:color/black" />
+
+    <LinearLayout
+        android:id="@+id/uxsdk_waypoint_drawer_slide"
+        android:layout_width="@dimen/uxsdk_waypoint_drawer_width"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:elevation="12dp"
+        android:orientation="vertical">
+
+        <include layout="@layout/uxsdk_waypoint_mission_drawer_panel" />
+    </LinearLayout>
+</FrameLayout>

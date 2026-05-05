@@ -24,6 +24,7 @@ import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.Style
 import com.mapbox.mapboxsdk.style.layers.Layer
 import dji.v5.utils.common.LogUtils
+import kotlin.jvm.JvmOverloads
 import java.util.*
 import kotlin.collections.HashSet
 
@@ -129,6 +130,19 @@ class MaplibreMapDelegateKt(private val mapboxMap: MapboxMap,
         polygonSet.forEach { it.clear() }
         polylineSet.forEach { it.clear() }
         mapboxMap.setStyle(fromMapType(type)) { restoreResources(it, listener) }
+    }
+
+    /**
+     * Applies a MapLibre style JSON URL (for example [MaplibreStyle] constants).
+     * Performs the same teardown and style-loaded handling as [setMapType].
+     */
+    @JvmOverloads
+    fun setMapStyleUri(styleUri: String, listener: OnMapTypeLoadedListener? = null) {
+        markerSet.forEach { it.clearMarker() }
+        circleSet.forEach { it.clearCircle() }
+        polygonSet.forEach { it.clear() }
+        polylineSet.forEach { it.clear() }
+        mapboxMap.setStyle(styleUri) { restoreResources(it, listener) }
     }
 
     private fun restoreResources(style: Style, listener: OnMapTypeLoadedListener?) {

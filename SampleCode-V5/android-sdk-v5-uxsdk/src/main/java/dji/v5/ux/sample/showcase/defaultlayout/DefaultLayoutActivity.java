@@ -23,11 +23,15 @@
 
 package dji.v5.ux.sample.showcase.defaultlayout;
 
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,16 +40,22 @@ import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+
+import org.jetbrains.annotations.NotNull;
+
 import dji.sdk.keyvalue.value.common.CameraLensType;
 import dji.sdk.keyvalue.value.common.ComponentIndexType;
+import dji.v5.manager.aircraft.flysafe.info.FlyZoneCategory;
 import dji.v5.manager.datacenter.MediaDataCenter;
 import dji.v5.manager.interfaces.ICameraStreamManager;
 import dji.v5.network.DJINetworkManager;
 import dji.v5.network.IDJINetworkStatusListener;
+import dji.v5.utils.common.AndUtil;
 import dji.v5.utils.common.JsonUtil;
 import dji.v5.utils.common.LogPath;
 import dji.v5.utils.common.LogUtils;
@@ -76,7 +86,14 @@ import dji.v5.ux.core.widget.simulator.SimulatorIndicatorWidget;
 import dji.v5.ux.core.widget.systemstatus.SystemStatusWidget;
 import dji.v5.ux.gimbal.GimbalFineTuneWidget;
 import dji.v5.ux.map.MapWidget;
+import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
+import dji.v5.ux.mapkit.core.models.DJILatLng;
+import dji.v5.ux.sample.showcase.waypoint.WaypointPlanner;
+import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegate;
+import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegateKt;
+import dji.v5.ux.mapkit.maplibre.map.MaplibreStyle;
+import dji.v5.ux.mapkit.maplibre.provider.MaplibreProvider;
 import dji.v5.ux.training.simulatorcontrol.SimulatorControlWidget;
 import dji.v5.ux.visualcamera.CameraNDVIPanelWidget;
 import dji.v5.ux.visualcamera.CameraVisiblePanelWidget;
@@ -110,6 +127,16 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     protected SettingWidget settingWidget;
     protected MapWidget mapWidget;
     protected TopBarPanelWidget topBarPanel;
+    protected View takeOffWidget;
+    protected View returnHomeWidget;
+    protected View remainingFlightTimeWidget;
+    protected LinearLayout mapControlsContainer;
+    protected ImageView btnMapType;
+    protected ImageView btnFlyZones;
+    protected ImageView btnMission;
+    /** Waypoint planning on the map (KMZ upload / start uses {@link dji.v5.manager.aircraft.waypoint3.WaypointMissionManager}). */
+    private WaypointPlanner waypointPlanner;
+    private View waypointMissionDrawerShell;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -118,7 +145,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     private CameraLensType lastLensType = CameraLensType.UNKNOWN;
 
     // ── Swap state ────────────────────────────────────────────────────────────
-    private boolean isMapMini = true; // true → map is the small overlay
+    private static final long SWAP_DEBOUNCE_MS = 250L;
+    private ViewMode currentViewMode = ViewMode.FPV_FULL;
+    private long lastSwapRequestUptimeMs = 0L;
     private ConstraintLayout.LayoutParams mapMiniLayoutParams;
     private ConstraintLayout.LayoutParams fpvFullLayoutParams;
     // ─────────────────────────────────────────────────────────────────────────
@@ -134,10 +163,13 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         }
     };
 
+    private List<ComponentIndexType> lastAvailableCameraList = new ArrayList<>();
+
     private final ICameraStreamManager.AvailableCameraUpdatedListener availableCameraUpdatedListener =
             new ICameraStreamManager.AvailableCameraUpdatedListener() {
                 @Override
                 public void onAvailableCameraUpdated(@NonNull List<ComponentIndexType> availableCameraList) {
+                    lastAvailableCameraList = availableCameraList;
                     runOnUiThread(() -> updateFPVWidgetSource(availableCameraList));
                 }
 
@@ -145,6 +177,12 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 public void onCameraStreamEnableUpdate(
                         @NonNull Map<ComponentIndexType, Boolean> cameraStreamEnableMap) { }
             };
+
+    private enum ViewMode {
+        FPV_FULL,
+        MAP_FULL,
+        TRANSITIONING
+    }
     //endregion
 
     //region Lifecycle
@@ -155,6 +193,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
 
         fpvParentView = findViewById(R.id.fpv_holder);
         mDrawerLayout = findViewById(R.id.root_view);
+        waypointMissionDrawerShell = findViewById(R.id.uxsdk_waypoint_drawer_shell);
         topBarPanel = findViewById(R.id.panel_top_bar);
         settingWidget = topBarPanel.getSettingWidget();
         primaryFpvWidget = findViewById(R.id.widget_primary_fpv);
@@ -174,6 +213,13 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         horizontalSituationIndicatorWidget = findViewById(R.id.widget_horizontal_situation_indicator);
         gimbalAdjustDone = findViewById(R.id.fpv_gimbal_ok_btn);
         gimbalFineTuneWidget = findViewById(R.id.setting_menu_gimbal_fine_tune);
+        takeOffWidget = findViewById(R.id.widget_take_off);
+        returnHomeWidget = findViewById(R.id.widget_return_to_home);
+        remainingFlightTimeWidget = findViewById(R.id.widget_remaining_flight_time);
+        mapControlsContainer = findViewById(R.id.map_controls_container);
+        btnMapType = findViewById(R.id.btn_map_type);
+        btnFlyZones = findViewById(R.id.btn_fly_zones);
+        btnMission = findViewById(R.id.btn_mission);
         mapWidget = findViewById(R.id.widget_map);
         mapMiniLayoutParams = new ConstraintLayout.LayoutParams(
                 (ConstraintLayout.LayoutParams) mapWidget.getLayoutParams());
@@ -198,9 +244,8 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             if (uiSetting != null) {
                 uiSetting.setZoomControlsEnabled(false);
             }
-            // ── Swap: map-click → expand map ─────────────────────────────────
-            map.setOnMapClickListener(latLng -> onViewClick(mapWidget));
-            // ─────────────────────────────────────────────────────────────────
+            // Map tap: expand mini-map first; waypoint taps only when map is already full-screen.
+            map.setOnMapClickListener(this::handleMapWidgetMapClick);
         });
         mapWidget.onCreate(savedInstanceState);
 
@@ -219,11 +264,23 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void initClickListener() {
-        // ── Swap: fpvParentView click → revert to FPV-big layout ─────────────
-        fpvParentView.setOnClickListener(v -> onViewClick(fpvParentView));
-        // ─────────────────────────────────────────────────────────────────────
+        // ── Swap: mini FPV click → revert to FPV-big layout ──────────────────
+        fpvParentView.setOnClickListener(v -> requestViewMode(ViewMode.FPV_FULL));
+        // ──────────────────────────────────────────────────────────────────────
 
-        secondaryFPVWidget.setOnClickListener(v -> swapVideoSource());
+        primaryFpvWidget.setOnClickListener(v -> {
+            if (isMapExpanded()) {
+                requestViewMode(ViewMode.FPV_FULL);
+            }
+        });
+
+        secondaryFPVWidget.setOnClickListener(v -> {
+            if (isFpvExpanded()) {
+                swapVideoSource();
+            } else {
+                requestViewMode(ViewMode.FPV_FULL);
+            }
+        });
 
         if (settingWidget != null) {
             settingWidget.setOnClickListener(v -> toggleRightDrawer());
@@ -247,15 +304,111 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 gimbalFineTuneWidget.setVisibility(View.GONE);
             }
         });
+
+        if (btnMapType != null) {
+            btnMapType.setOnClickListener(v -> showMapTypeDialog());
+        }
+        if (btnFlyZones != null) {
+            btnFlyZones.setOnClickListener(v -> showSelectFlyZoneDialog());
+        }
+        if (btnMission != null) {
+            btnMission.setOnClickListener(v -> onMissionButtonClick());
+        }
+    }
+
+    /**
+     * Mission: choose type (waypoint / hot point / custom). While waypoint planning is active,
+     * toggles the waypoint mission drawer (right slide-over panel).
+     */
+    protected void onMissionButtonClick() {
+        if (waypointPlanner != null && waypointPlanner.isPlanningActive()) {
+            waypointPlanner.toggleDrawer();
+            return;
+        }
+        showMissionTypeDialog();
+    }
+
+    private void handleMapWidgetMapClick(DJILatLng latLng) {
+        // While the map is still the small overlay, a tap must expand it — not add a waypoint.
+        // Waypoint planning would otherwise consume the event and block expansion after FPV↔map swaps.
+        if (isFpvExpanded()) {
+            requestViewMode(ViewMode.MAP_FULL);
+            return;
+        }
+        if (waypointPlanner != null && waypointPlanner.onMapClick(latLng)) {
+            return;
+        }
+    }
+
+    private void showMissionTypeDialog() {
+        String[] types = {
+                getString(R.string.uxsdk_mission_type_waypoint),
+                getString(R.string.uxsdk_mission_type_hotpoint),
+                getString(R.string.uxsdk_mission_type_custom)
+        };
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.uxsdk_mission_type_title)
+                .setItems(types, (dialog, which) -> {
+                    if (which == 0) {
+                        if (waypointPlanner == null) {
+                            waypointPlanner = new WaypointPlanner(this, mapWidget);
+                        } else {
+                            waypointPlanner.clearPlanning();
+                        }
+                        waypointPlanner.bindDrawer(waypointMissionDrawerShell);
+                        waypointPlanner.startWaypointPlanning();
+                    } else {
+                        Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
+    }
+
+    private void showMapTypeDialog() {
+        String[] labels = {"Normal", "Satellite", "Hybrid"};
+        String[] styleUrls = {
+                MaplibreStyle.MAPBOX_STREETS,
+                MaplibreStyle.SATELLITE,
+                MaplibreStyle.SATELLITE_STREETS
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Map style");
+        builder.setItems(labels, (dialog, which) -> {
+            DJIMap map = mapWidget.getMap();
+            if (map instanceof MaplibreMapDelegate) {
+                ((MaplibreMapDelegate) map).setMapStyleUri(styleUrls[which]);
+            } else if (map instanceof MaplibreMapDelegateKt) {
+                ((MaplibreMapDelegateKt) map).setMapStyleUri(styleUrls[which]);
+            }
+        });
+        builder.show();
+    }
+
+    private void showSelectFlyZoneDialog() {
+        String[] categories = {"AUTHORIZATION", "WARNING", "ENHANCED_WARNING", "RESTRICTED"};
+        FlyZoneCategory[] enumCategories = {FlyZoneCategory.AUTHORIZATION, FlyZoneCategory.WARNING, FlyZoneCategory.ENHANCED_WARNING, FlyZoneCategory.RESTRICTED};
+        boolean[] checkedItems = new boolean[enumCategories.length];
+        for (int fzIndex = 0; fzIndex < enumCategories.length; fzIndex++) {
+            checkedItems[fzIndex] = mapWidget.getFlyZoneHelper().isFlyZoneVisible(enumCategories[fzIndex]);
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Fly Zones");
+        builder.setMultiChoiceItems(categories, checkedItems, (dialog, which, isChecked) -> mapWidget.getFlyZoneHelper().hideShowFlyZoneOfMap(enumCategories[which], isChecked));
+        builder.setPositiveButton("OK", null);
+        builder.show();
     }
 
     private void toggleRightDrawer() {
         mDrawerLayout.openDrawer(GravityCompat.END);
     }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (waypointPlanner != null) {
+            waypointPlanner.clearPlanning();
+        }
         mapWidget.onDestroy();
         MediaDataCenter.getInstance().getCameraStreamManager()
                 .removeAvailableCameraUpdatedListener(availableCameraUpdatedListener);
@@ -310,31 +463,87 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     // region Map ↔ FPV swap
     // ══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Central dispatcher for the layout swap.
-     *
-     * • Tap mini-map (isMapMini == true) → map expands to full screen,
-     * fpvParentView shrinks to thumbnail.
-     * • Tap mini-fpv (isMapMini == false) → fpvParentView returns to full screen,
-     * mapWidget shrinks back to thumbnail.
-     *
-     * All other click targets (the large background view) are intentionally
-     * ignored so that normal map-pan / FPV-interaction events pass through.
-     */
-    private void onViewClick(View view) {
-        if (view == fpvParentView && !isMapMini) {
-            // ── Revert: FPV grows back, map shrinks ───────────────────────────
-            applySwapLayout(false);
-            bringThumbnailToFront(mapWidget);
-            fpvInteractionWidget.setInteractionEnabled(true);
-            isMapMini = true;
+    private void requestViewMode(@NonNull ViewMode targetMode) {
+        if (targetMode == ViewMode.TRANSITIONING || currentViewMode == ViewMode.TRANSITIONING) {
+            return;
+        }
+        if (currentViewMode == targetMode) {
+            return;
+        }
+        long now = android.os.SystemClock.uptimeMillis();
+        if (now - lastSwapRequestUptimeMs < SWAP_DEBOUNCE_MS) {
+            return;
+        }
+        lastSwapRequestUptimeMs = now;
+        applyViewMode(targetMode);
+    }
 
-        } else if (view == mapWidget && isMapMini) {
-            // ── Expand: map grows, FPV shrinks ────────────────────────────────
-            applySwapLayout(true);
+    private boolean isMapExpanded() {
+        return currentViewMode == ViewMode.MAP_FULL;
+    }
+
+    private boolean isFpvExpanded() {
+        return currentViewMode == ViewMode.FPV_FULL;
+    }
+
+    private void applyViewMode(@NonNull ViewMode targetMode) {
+        currentViewMode = ViewMode.TRANSITIONING;
+        boolean mapExpanded = targetMode == ViewMode.MAP_FULL;
+        applySwapLayout(mapExpanded);
+        if (mapExpanded) {
             bringThumbnailToFront(fpvParentView);
             fpvInteractionWidget.setInteractionEnabled(false);
-            isMapMini = false;
+        } else {
+            bringThumbnailToFront(mapWidget);
+            fpvInteractionWidget.setInteractionEnabled(true);
+        }
+        updateWidgetsVisibility(mapExpanded);
+        currentViewMode = targetMode;
+    }
+
+    private void updateWidgetsVisibility(boolean isMapExpanded) {
+        if (isMapExpanded) {
+            // Hide everything that shouldn't be there when map is expanded
+            if (lensControlWidget != null) lensControlWidget.setVisibility(View.GONE);
+            if (ndviCameraPanel != null) ndviCameraPanel.setVisibility(View.GONE);
+            if (visualCameraPanel != null) visualCameraPanel.setVisibility(View.GONE);
+            if (autoExposureLockWidget != null) autoExposureLockWidget.setVisibility(View.GONE);
+            if (focusModeWidget != null) focusModeWidget.setVisibility(View.GONE);
+            if (focusExposureSwitchWidget != null) focusExposureSwitchWidget.setVisibility(View.GONE);
+            if (cameraControlsWidget != null) cameraControlsWidget.setVisibility(View.GONE);
+            if (focalZoomWidget != null) focalZoomWidget.setVisibility(View.GONE);
+            if (horizontalSituationIndicatorWidget != null)
+                horizontalSituationIndicatorWidget.setVisibility(View.GONE);
+            if (pfvFlightDisplayWidget != null) pfvFlightDisplayWidget.setVisibility(View.GONE);
+            if (simulatorControlWidget != null) simulatorControlWidget.setVisibility(View.GONE);
+            if (gimbalFineTuneWidget != null) gimbalFineTuneWidget.setVisibility(View.GONE);
+
+            // Thumbnail Management:
+            // Keep Primary FPV visible (it will shrink with the fpv_holder container)
+            primaryFpvWidget.setVisibility(View.VISIBLE);
+            // Hide the extra secondary FPV widget so it doesn't overlap in the thumbnail
+            secondaryFPVWidget.setVisibility(View.GONE);
+
+            if (mapControlsContainer != null) {
+                mapControlsContainer.setVisibility(View.VISIBLE);
+            }
+
+        } else {
+            // Reverting to FPV: Restore the "default" layout
+            primaryFpvWidget.setVisibility(View.VISIBLE);
+            if (horizontalSituationIndicatorWidget != null) {
+                horizontalSituationIndicatorWidget.setVisibility(View.VISIBLE);
+            }
+
+            // Restore Secondary FPV visibility based on actual camera availability
+            updateFPVWidgetSource(lastAvailableCameraList);
+
+            // Use the existing logic to set visibility based on camera/lens type
+            updateViewVisibility(lastDevicePosition, lastLensType);
+
+            if (mapControlsContainer != null) {
+                mapControlsContainer.setVisibility(View.GONE);
+            }
         }
     }
 
