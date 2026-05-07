@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/uxsdk_fpv_popover_content_background_color"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:theme="@style/uxsdk_waypoint_drawer_theme">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/uxsdk_mapping_drawer_title"
+            android:textColor="@color/uxsdk_white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/uxsdk_mapping_drawer_btn_close"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/uxsdk_waypoint_drawer_close"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:tint="@color/uxsdk_white" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/uxsdk_mapping_tap_map_hint"
+        android:textColor="@color/uxsdk_white_70_percent"
+        android:textSize="12sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/uxsdk_mapping_predefined_shapes"
+        android:textColor="@color/uxsdk_white"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/uxsdk_mapping_btn_square"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:text="@string/uxsdk_mapping_shape_square"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+
+        <Button
+            android:id="@+id/uxsdk_mapping_btn_rectangle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:text="@string/uxsdk_mapping_shape_rectangle"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+
+        <Button
+            android:id="@+id/uxsdk_mapping_btn_circle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:text="@string/uxsdk_mapping_shape_circle"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/uxsdk_mapping_tv_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/uxsdk_white"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/uxsdk_mapping_tv_area"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/uxsdk_white"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/uxsdk_mapping_tv_perimeter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/uxsdk_white"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/uxsdk_mapping_tv_generated_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/uxsdk_white"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/uxsdk_mapping_tv_generated_distance"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/uxsdk_white"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/uxsdk_mapping_tv_generated_eta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/uxsdk_white"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/uxsdk_mapping_btn_undo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+                    android:text="@string/uxsdk_mapping_undo"
+                    android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+
+                <Button
+                    android:id="@+id/uxsdk_mapping_btn_clear"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+                    android:text="@string/uxsdk_mapping_clear"
+                    android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/uxsdk_mapping_global_wp_title"
+                android:textColor="@color/uxsdk_white"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/uxsdk_mapping_altitude_m"
+                android:textColor="@color/uxsdk_white_70_percent"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/uxsdk_mapping_et_altitude"
+                style="@style/uxsdk_waypoint_drawer_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:text="70" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/uxsdk_mapping_speed_ms"
+                android:textColor="@color/uxsdk_white_70_percent"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/uxsdk_mapping_et_speed"
+                style="@style/uxsdk_waypoint_drawer_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:text="6" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/uxsdk_mapping_gimbal_pitch"
+                android:textColor="@color/uxsdk_white_70_percent"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/uxsdk_mapping_et_gimbal_pitch"
+                style="@style/uxsdk_waypoint_drawer_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal|numberSigned"
+                android:text="-90" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/uxsdk_mapping_spacing_m"
+                android:textColor="@color/uxsdk_white_70_percent"
+                android:textSize="12sp" />
+
+            <EditText
+                android:id="@+id/uxsdk_mapping_et_spacing"
+                style="@style/uxsdk_waypoint_drawer_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:text="35" />
+
+            <Button
+                android:id="@+id/uxsdk_mapping_btn_generate_waypoints"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+                android:text="@string/uxsdk_mapping_generate_waypoints"
+                android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/uxsdk_mission_finish_action" />
+
+            <androidx.appcompat.widget.AppCompatSpinner
+                android:id="@+id/uxsdk_mapping_sp_finish"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
+
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/uxsdk_mission_rc_lost_action" />
+
+            <androidx.appcompat.widget.AppCompatSpinner
+                android:id="@+id/uxsdk_mapping_sp_rc_lost"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/uxsdk_mapping_btn_exit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:text="@string/uxsdk_waypoint_drawer_exit_mission"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+
+        <Button
+            android:id="@+id/uxsdk_mapping_btn_upload"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:text="@string/uxsdk_mapping_upload_waypoints"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+
+        <Button
+            android:id="@+id/uxsdk_mapping_btn_start"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:text="@string/uxsdk_mapping_start_mission"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/uxsdk_mapping_upload_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginTop="8dp"
+        android:indeterminate="false"
+        android:max="100"
+        android:progress="0"
+        android:visibility="gone" />
+</LinearLayout>

@@ -90,6 +90,7 @@ import dji.v5.ux.map.MapWidget;
 import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
 import dji.v5.ux.mapkit.core.models.DJILatLng;
+import dji.v5.ux.sample.showcase.waypoint.MappingPlanner;
 import dji.v5.ux.sample.showcase.waypoint.WaypointPlanner;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegate;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegateKt;
@@ -138,6 +139,8 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     /** Waypoint planning on the map (KMZ upload / start uses {@link dji.v5.manager.aircraft.waypoint3.WaypointMissionManager}). */
     private WaypointPlanner waypointPlanner;
     private View waypointMissionDrawerShell;
+    private MappingPlanner mappingPlanner;
+    private View mappingDrawerShell;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -195,6 +198,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         fpvParentView = findViewById(R.id.fpv_holder);
         mDrawerLayout = findViewById(R.id.root_view);
         waypointMissionDrawerShell = findViewById(R.id.uxsdk_waypoint_drawer_shell);
+        mappingDrawerShell = findViewById(R.id.uxsdk_mapping_drawer_shell);
         topBarPanel = findViewById(R.id.panel_top_bar);
         settingWidget = topBarPanel.getSettingWidget();
         primaryFpvWidget = findViewById(R.id.widget_primary_fpv);
@@ -326,6 +330,10 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             waypointPlanner.toggleDrawer();
             return;
         }
+        if (mappingPlanner != null && mappingPlanner.isPlanningActive()) {
+            mappingPlanner.toggleDrawer();
+            return;
+        }
         showMissionTypeDialog();
     }
 
@@ -337,6 +345,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             return;
         }
         if (waypointPlanner != null && waypointPlanner.onMapClick(latLng)) {
+            return;
+        }
+        if (mappingPlanner != null && mappingPlanner.onMapClick(latLng)) {
             return;
         }
     }
@@ -352,11 +363,13 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         }
 
         View waypointCard = root.findViewById(R.id.uxsdk_mission_picker_waypoint_card);
-        View hotpointCard = root.findViewById(R.id.uxsdk_mission_picker_hotpoint_card);
         View mappingCard = root.findViewById(R.id.uxsdk_mission_picker_mapping_card);
 
         waypointCard.setOnClickListener(v -> {
             dialog.dismiss();
+            if (mappingPlanner != null) {
+                mappingPlanner.clearPlanning();
+            }
             if (btnMission != null) {
                 // Show custom waypoint image when mission mode is entered.
                 btnMission.setImageResource(R.drawable.way);
@@ -371,13 +384,23 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             waypointPlanner.bindDrawer(waypointMissionDrawerShell);
             waypointPlanner.startWaypointPlanning();
         });
-        hotpointCard.setOnClickListener(v -> {
-            dialog.dismiss();
-            Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
-        });
         mappingCard.setOnClickListener(v -> {
             dialog.dismiss();
-            Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
+            if (waypointPlanner != null) {
+                waypointPlanner.clearPlanning();
+            }
+            if (btnMission != null) {
+                btnMission.setImageResource(R.drawable.terrain);
+                btnMission.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                btnMission.setPadding(6, 6, 6, 6);
+            }
+            if (mappingPlanner == null) {
+                mappingPlanner = new MappingPlanner(this, mapWidget);
+            } else {
+                mappingPlanner.clearPlanning();
+            }
+            mappingPlanner.bindDrawer(mappingDrawerShell);
+            mappingPlanner.startMappingPlanning();
         });
         dialog.show();
     }
