@@ -363,7 +363,6 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         }
 
         View waypointCard = root.findViewById(R.id.uxsdk_mission_picker_waypoint_card);
-        View hotpointCard = root.findViewById(R.id.uxsdk_mission_picker_hotpoint_card);
         View mappingCard = root.findViewById(R.id.uxsdk_mission_picker_mapping_card);
 
         waypointCard.setOnClickListener(v -> {
@@ -384,10 +383,6 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             }
             waypointPlanner.bindDrawer(waypointMissionDrawerShell);
             waypointPlanner.startWaypointPlanning();
-        });
-        hotpointCard.setOnClickListener(v -> {
-            dialog.dismiss();
-            Toast.makeText(this, R.string.uxsdk_mission_type_not_implemented, Toast.LENGTH_SHORT).show();
         });
         mappingCard.setOnClickListener(v -> {
             dialog.dismiss();

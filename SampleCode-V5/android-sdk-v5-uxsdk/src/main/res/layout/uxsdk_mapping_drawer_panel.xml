@@ -243,6 +243,34 @@
                 android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
                 android:text="@string/uxsdk_mapping_generate_waypoints"
                 android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
+
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/uxsdk_mission_finish_action" />
+
+            <androidx.appcompat.widget.AppCompatSpinner
+                android:id="@+id/uxsdk_mapping_sp_finish"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
+
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/uxsdk_mission_rc_lost_action" />
+
+            <androidx.appcompat.widget.AppCompatSpinner
+                android:id="@+id/uxsdk_mapping_sp_rc_lost"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp" />
         </LinearLayout>
     </ScrollView>
 
@@ -281,4 +309,15 @@
             android:text="@string/uxsdk_mapping_start_mission"
             android:textColor="@color/uxsdk_waypoint_drawer_btn_text" />
     </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/uxsdk_mapping_upload_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginTop="8dp"
+        android:indeterminate="false"
+        android:max="100"
+        android:progress="0"
+        android:visibility="gone" />
 </LinearLayout>

@@ -1,11 +1,16 @@
 package dji.v5.ux.sample.showcase.waypoint;
 
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.text.InputType;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,11 +20,27 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+import com.dji.wpmzsdk.manager.WPMZManager;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import dji.sdk.wpmz.value.mission.WaylineLocationCoordinate2D;
+import dji.sdk.wpmz.value.mission.WaylineLocationCoordinate3D;
+import dji.sdk.wpmz.value.mission.WaylineExitOnRCLostAction;
+import dji.sdk.wpmz.value.mission.WaylineFinishedAction;
+import dji.sdk.wpmz.value.mission.WaylineWaypoint;
+import dji.sdk.wpmz.value.mission.WaylineWaypointGimbalHeadingMode;
+import dji.sdk.wpmz.value.mission.WaylineWaypointGimbalHeadingParam;
+import dji.sdk.wpmz.value.mission.WaylineWaypointYawMode;
+import dji.sdk.wpmz.value.mission.WaylineWaypointYawParam;
+import dji.sdk.wpmz.value.mission.WaylineWaypointYawPathMode;
+import dji.v5.common.callback.CommonCallbacks;
+import dji.v5.common.error.IDJIError;
+import dji.v5.manager.aircraft.waypoint3.WaypointMissionManager;
 import dji.v5.ux.R;
 import dji.v5.ux.core.util.ViewUtil;
 import dji.v5.ux.map.MapWidget;
@@ -39,6 +60,8 @@ import dji.v5.ux.mapkit.core.models.annotations.DJIPolylineOptions;
  * Mapping planner: tap to add polygon vertices and generate predefined shapes.
  */
 public final class MappingPlanner {
+    private static final String PREFS_MAPPING_TUTORIAL = "uxsdk_mapping_tutorial_prefs";
+    private static final String KEY_MAPPING_TUTORIAL_SHOWN = "mapping_tutorial_shown";
     private final AppCompatActivity activity;
     private final MapWidget mapWidget;
 
@@ -59,12 +82,27 @@ public final class MappingPlanner {
     private EditText etSpeed;
     private EditText etGimbalPitch;
     private EditText etSpacing;
+    private Spinner spFinish;
+    private Spinner spRcLost;
+    private ProgressBar uploadProgress;
+    private Button btnUpload;
+    private Button btnStart;
     private DJIMap.OnMarkerDragListener markerDragListener;
     private DJIMap.OnMarkerClickListener markerClickListener;
     private long selectedPolygonId = -1L;
     private int selectedVertexIndex = -1;
     private DJIBitmapDescriptor waypointMarkerIcon;
     private DJIBitmapDescriptor generatedWaypointMarkerIcon;
+    private final WaypointMissionGlobals missionGlobals = new WaypointMissionGlobals();
+    private final List<WaylineFinishedAction> finishChoices = new ArrayList<>();
+    private final List<WaylineExitOnRCLostAction> lostChoices = new ArrayList<>();
+    private boolean suppressMissionSpinnerCallbacks;
+    private boolean uploadInProgress;
+    private boolean startInProgress;
+    private boolean planDirtySinceUpload = true;
+    private boolean lastUploadSucceeded;
+    @Nullable
+    private String lastKmzPath;
 
     private static final class EditablePolygon {
         private final long id;
@@ -127,8 +165,8 @@ public final class MappingPlanner {
         Button btnUndo = drawerShell.findViewById(R.id.uxsdk_mapping_btn_undo);
         Button btnClear = drawerShell.findViewById(R.id.uxsdk_mapping_btn_clear);
         Button btnExit = drawerShell.findViewById(R.id.uxsdk_mapping_btn_exit);
-        Button btnUpload = drawerShell.findViewById(R.id.uxsdk_mapping_btn_upload);
-        Button btnStart = drawerShell.findViewById(R.id.uxsdk_mapping_btn_start);
+        btnUpload = drawerShell.findViewById(R.id.uxsdk_mapping_btn_upload);
+        btnStart = drawerShell.findViewById(R.id.uxsdk_mapping_btn_start);
         Button btnGenerate = drawerShell.findViewById(R.id.uxsdk_mapping_btn_generate_waypoints);
         tvCount = drawerShell.findViewById(R.id.uxsdk_mapping_tv_count);
         tvArea = drawerShell.findViewById(R.id.uxsdk_mapping_tv_area);
@@ -140,6 +178,11 @@ public final class MappingPlanner {
         etSpeed = drawerShell.findViewById(R.id.uxsdk_mapping_et_speed);
         etGimbalPitch = drawerShell.findViewById(R.id.uxsdk_mapping_et_gimbal_pitch);
         etSpacing = drawerShell.findViewById(R.id.uxsdk_mapping_et_spacing);
+        spFinish = drawerShell.findViewById(R.id.uxsdk_mapping_sp_finish);
+        spRcLost = drawerShell.findViewById(R.id.uxsdk_mapping_sp_rc_lost);
+        uploadProgress = drawerShell.findViewById(R.id.uxsdk_mapping_upload_progress);
+
+        setupMissionActionSpinners();
 
         if (close != null) close.setOnClickListener(v -> hideDrawer());
         if (scrim != null) scrim.setOnClickListener(v -> hideDrawer());
@@ -149,19 +192,93 @@ public final class MappingPlanner {
         if (btnUndo != null) btnUndo.setOnClickListener(v -> undoLastPoint());
         if (btnClear != null) btnClear.setOnClickListener(v -> clearPolygonOnly());
         if (btnExit != null) btnExit.setOnClickListener(v -> clearPlanning());
-        if (btnUpload != null) btnUpload.setOnClickListener(v ->
-                Toast.makeText(activity, R.string.uxsdk_mapping_upload_not_ready, Toast.LENGTH_SHORT).show());
-        if (btnStart != null) btnStart.setOnClickListener(v ->
-                Toast.makeText(activity, R.string.uxsdk_mapping_start_not_ready, Toast.LENGTH_SHORT).show());
+        if (btnUpload != null) btnUpload.setOnClickListener(v -> uploadMissionForActivePolygon());
+        if (btnStart != null) btnStart.setOnClickListener(v -> startLastUploadedMission());
         if (btnGenerate != null) btnGenerate.setOnClickListener(v -> generateWaypointsForActivePolygon());
         refreshSummary();
+        updateUploadUiIdle();
+        updateMissionActionState();
+    }
+
+    private void setupMissionActionSpinners() {
+        if (spFinish == null || spRcLost == null) {
+            return;
+        }
+        finishChoices.clear();
+        finishChoices.addAll(filterUnknown(WaylineFinishedAction.values()));
+        lostChoices.clear();
+        lostChoices.addAll(filterUnknown(WaylineExitOnRCLostAction.values()));
+        if (finishChoices.isEmpty() || lostChoices.isEmpty()) {
+            return;
+        }
+
+        if (!finishChoices.contains(missionGlobals.finishAction)) {
+            missionGlobals.finishAction = WaylineFinishedAction.GO_HOME;
+        }
+        if (!lostChoices.contains(missionGlobals.lostAction)) {
+            missionGlobals.lostAction = WaylineExitOnRCLostAction.GO_BACK;
+        }
+
+        ArrayAdapter<String> finishAdapter = new ArrayAdapter<>(activity,
+                R.layout.uxsdk_waypoint_drawer_spinner_item, R.id.uxsdk_waypoint_spinner_text,
+                toDisplayNames(finishChoices));
+        finishAdapter.setDropDownViewResource(R.layout.uxsdk_waypoint_drawer_spinner_dropdown_item);
+        spFinish.setAdapter(finishAdapter);
+
+        ArrayAdapter<String> rcLostAdapter = new ArrayAdapter<>(activity,
+                R.layout.uxsdk_waypoint_drawer_spinner_item, R.id.uxsdk_waypoint_spinner_text,
+                toDisplayNames(lostChoices));
+        rcLostAdapter.setDropDownViewResource(R.layout.uxsdk_waypoint_drawer_spinner_dropdown_item);
+        spRcLost.setAdapter(rcLostAdapter);
+
+        int popupBg = R.drawable.uxsdk_waypoint_drawer_spinner_popup_bg;
+        spFinish.setPopupBackgroundResource(popupBg);
+        spRcLost.setPopupBackgroundResource(popupBg);
+
+        spFinish.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                WaylineFinishedAction selected = finishChoices.get(clampIndex(position, 0, finishChoices.size() - 1));
+                if (!suppressMissionSpinnerCallbacks && missionGlobals.finishAction != selected) {
+                    missionGlobals.finishAction = selected;
+                    markPlanDirty();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        spRcLost.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                WaylineExitOnRCLostAction selected = lostChoices.get(clampIndex(position, 0, lostChoices.size() - 1));
+                if (!suppressMissionSpinnerCallbacks && missionGlobals.lostAction != selected) {
+                    missionGlobals.lostAction = selected;
+                    markPlanDirty();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+
+        int finishIndex = finishChoices.indexOf(missionGlobals.finishAction);
+        int lostIndex = lostChoices.indexOf(missionGlobals.lostAction);
+        suppressMissionSpinnerCallbacks = true;
+        spFinish.setSelection(clampIndex(finishIndex, 0, finishChoices.size() - 1));
+        spRcLost.setSelection(clampIndex(lostIndex, 0, lostChoices.size() - 1));
+        suppressMissionSpinnerCallbacks = false;
     }
 
     public void startMappingPlanning() {
         planningActive = true;
         attachDragListener();
+        uploadInProgress = false;
+        startInProgress = false;
+        markPlanDirty();
         showDrawer(true);
         Toast.makeText(activity, R.string.uxsdk_mapping_tap_map_hint, Toast.LENGTH_LONG).show();
+        maybeShowFirstTimeTutorial();
     }
 
     public void toggleDrawer() {
@@ -208,6 +325,9 @@ public final class MappingPlanner {
         detachDragListener();
         detachMarkerClickListener();
         clearAllPolygons();
+        uploadInProgress = false;
+        startInProgress = false;
+        markPlanDirty();
         hideDrawerImmediate();
     }
 
@@ -372,6 +492,7 @@ public final class MappingPlanner {
                     + (generatedEtaSec <= 0 ? activity.getString(R.string.uxsdk_waypoint_drawer_summary_na)
                     : String.format(Locale.US, "%.0f s", generatedEtaSec)));
         }
+        updateMissionActionState();
     }
 
     private void showDrawer(boolean animateFromOffscreen) {
@@ -898,6 +1019,294 @@ public final class MappingPlanner {
         if (polygon.generatedRouteLine != null) {
             try { polygon.generatedRouteLine.remove(); } catch (Exception ignored) { }
             polygon.generatedRouteLine = null;
+        }
+        markPlanDirty();
+    }
+
+    private void uploadMissionForActivePolygon() {
+        if (uploadInProgress || startInProgress) {
+            return;
+        }
+        EditablePolygon active = getActivePolygon();
+        if (active == null || active.generatedWaypoints.isEmpty()) {
+            Toast.makeText(activity, R.string.uxsdk_mapping_need_polygon_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        saveGeneratedKmzToCache(active, true);
+        if (lastKmzPath == null) {
+            return;
+        }
+
+        uploadInProgress = true;
+        lastUploadSucceeded = false;
+        updateMissionActionState();
+        if (uploadProgress != null) {
+            uploadProgress.setVisibility(View.VISIBLE);
+            uploadProgress.setProgress(0);
+        }
+        WaypointMissionManager.getInstance().pushKMZFileToAircraft(lastKmzPath,
+                new CommonCallbacks.CompletionCallbackWithProgress<Double>() {
+                    @Override
+                    public void onProgressUpdate(Double progress) {
+                        activity.runOnUiThread(() -> {
+                            if (uploadProgress == null || progress == null) {
+                                return;
+                            }
+                            uploadProgress.setVisibility(View.VISIBLE);
+                            uploadProgress.setProgress(clampIndex((int) (progress * 100.0), 0, 100));
+                        });
+                    }
+
+                    @Override
+                    public void onSuccess() {
+                        activity.runOnUiThread(() -> {
+                            uploadInProgress = false;
+                            planDirtySinceUpload = false;
+                            lastUploadSucceeded = true;
+                            if (uploadProgress != null) {
+                                uploadProgress.setProgress(100);
+                            }
+                            updateMissionActionState();
+                            Toast.makeText(activity, R.string.uxsdk_mapping_upload_ok, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull IDJIError error) {
+                        activity.runOnUiThread(() -> {
+                            uploadInProgress = false;
+                            lastUploadSucceeded = false;
+                            updateUploadUiIdle();
+                            updateMissionActionState();
+                            String msg = error != null ? error.description() : "?";
+                            Toast.makeText(activity,
+                                    activity.getString(R.string.uxsdk_mapping_upload_fail, msg),
+                                    Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
+    }
+
+    private void startLastUploadedMission() {
+        if (uploadInProgress || startInProgress) {
+            return;
+        }
+        if (planDirtySinceUpload || !lastUploadSucceeded) {
+            Toast.makeText(activity, R.string.uxsdk_mapping_save_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (lastKmzPath == null) {
+            Toast.makeText(activity, R.string.uxsdk_mapping_save_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String missionId = missionIdFromPath(lastKmzPath);
+        startInProgress = true;
+        updateMissionActionState();
+        WaypointMissionManager.getInstance().startMission(missionId, Collections.singletonList(0),
+                new CommonCallbacks.CompletionCallback() {
+                    @Override
+                    public void onSuccess() {
+                        activity.runOnUiThread(() -> {
+                            startInProgress = false;
+                            updateMissionActionState();
+                            Toast.makeText(activity, R.string.uxsdk_mapping_start_ok, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull IDJIError error) {
+                        activity.runOnUiThread(() -> {
+                            startInProgress = false;
+                            updateMissionActionState();
+                            String msg = error != null ? error.description() : "?";
+                            Toast.makeText(activity,
+                                    activity.getString(R.string.uxsdk_mapping_start_fail, msg),
+                                    Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
+    }
+
+    private void saveGeneratedKmzToCache(@NonNull EditablePolygon polygon, boolean quiet) {
+        if (polygon.generatedWaypoints.isEmpty()) {
+            Toast.makeText(activity, R.string.uxsdk_mapping_need_polygon_first, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        double altitude = parseAndClamp(etAltitude, 70.0, MIN_ALTITUDE_M, MAX_ALTITUDE_M);
+        double speed = parseAndClamp(etSpeed, 6.0, MIN_SPEED_MPS, MAX_SPEED_MPS);
+        double gimbalPitch = parseAndClamp(etGimbalPitch, -90.0, MIN_GIMBAL_PITCH, MAX_GIMBAL_PITCH);
+
+        try {
+            List<WaypointPlanItem> planItems = buildMissionPlanItems(polygon.generatedWaypoints, altitude, speed, gimbalPitch);
+            File out = new File(activity.getCacheDir(), "uxsdk_mapping_waypoints.kmz");
+            WPMZManager.getInstance().generateKMZFile(
+                    out.getAbsolutePath(),
+                    WaypointKmzUtil.createWaylineMission(),
+                    WaypointKmzUtil.createMissionConfig(missionGlobals),
+                    WaypointKmzUtil.createTemplate(planItems, missionGlobals));
+            lastKmzPath = out.getAbsolutePath();
+            if (!quiet) {
+                Toast.makeText(activity, lastKmzPath, Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            lastKmzPath = null;
+            String msg = (e.getMessage() == null || e.getMessage().trim().isEmpty()) ? "unknown" : e.getMessage();
+            Toast.makeText(activity, activity.getString(R.string.uxsdk_mapping_kmz_save_fail, msg),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @NonNull
+    private List<WaypointPlanItem> buildMissionPlanItems(@NonNull List<DJILatLng> generated,
+                                                         double altitude,
+                                                         double speed,
+                                                         double gimbalPitch) {
+        List<WaypointPlanItem> out = new ArrayList<>();
+        for (int i = 0; i < generated.size(); i++) {
+            DJILatLng latLng = generated.get(i);
+            WaylineWaypoint waypoint = new WaylineWaypoint();
+            waypoint.setWaypointIndex(i);
+            waypoint.setUseGlobalTurnParam(true);
+            waypoint.setUseGlobalYawParam(false);
+            waypoint.setLocation(new WaylineLocationCoordinate2D(latLng.getLatitude(), latLng.getLongitude()));
+            waypoint.setHeight(altitude);
+            waypoint.setEllipsoidHeight(altitude);
+            waypoint.setSpeed(speed);
+            waypoint.setGimbalPitchAngle(gimbalPitch);
+
+            WaylineWaypointYawParam yawParam = new WaylineWaypointYawParam();
+            yawParam.setEnableYawAngle(false);
+            yawParam.setYawAngle(0d);
+            yawParam.setYawMode(WaylineWaypointYawMode.FOLLOW_WAYLINE);
+            yawParam.setYawPathMode(WaylineWaypointYawPathMode.FOLLOW_BAD_ARC);
+            yawParam.setPoiLocation(new WaylineLocationCoordinate3D(
+                    latLng.getLatitude(), latLng.getLongitude(), altitude));
+            waypoint.setYawParam(yawParam);
+
+            WaylineWaypointGimbalHeadingParam gh = new WaylineWaypointGimbalHeadingParam();
+            gh.setHeadingMode(WaylineWaypointGimbalHeadingMode.FOLLOW_WAYLINE);
+            gh.setPitchAngle(gimbalPitch);
+            waypoint.setGimbalHeadingParam(gh);
+
+            WaypointPlanItem item = new WaypointPlanItem();
+            item.setWaylineWaypoint(waypoint);
+            item.setActionInfos(new ArrayList<>());
+            item.setTurnMode(missionGlobals.globalTurnMode);
+            out.add(item);
+        }
+        return out;
+    }
+
+    private void markPlanDirty() {
+        planDirtySinceUpload = true;
+        lastUploadSucceeded = false;
+        updateMissionActionState();
+    }
+
+    private void updateMissionActionState() {
+        EditablePolygon active = getActivePolygon();
+        boolean hasGenerated = active != null && !active.generatedWaypoints.isEmpty();
+        if (btnUpload != null) {
+            btnUpload.setEnabled(planningActive && hasGenerated && !uploadInProgress && !startInProgress);
+        }
+        if (btnStart != null) {
+            btnStart.setEnabled(planningActive && hasGenerated && !planDirtySinceUpload
+                    && lastUploadSucceeded && !uploadInProgress && !startInProgress);
+        }
+    }
+
+    @NonNull
+    private static String missionIdFromPath(@NonNull String path) {
+        try {
+            String name = new File(path).getName();
+            if (name.endsWith(".kmz")) {
+                return name.substring(0, name.length() - 4);
+            }
+            return name;
+        } catch (Exception e) {
+            return "mission";
+        }
+    }
+
+    private static int clampIndex(int value, int min, int max) {
+        if (value < min) {
+            return min;
+        }
+        if (value > max) {
+            return max;
+        }
+        return value;
+    }
+
+    private static <T extends Enum<T>> List<T> filterUnknown(@NonNull T[] values) {
+        List<T> out = new ArrayList<>();
+        for (T value : values) {
+            if (value != null && !"UNKNOWN".equals(value.name())) {
+                out.add(value);
+            }
+        }
+        return out;
+    }
+
+    @NonNull
+    private static List<String> toNames(@NonNull List<? extends Enum<?>> enums) {
+        List<String> names = new ArrayList<>();
+        for (Enum<?> e : enums) {
+            names.add(e.name());
+        }
+        return names;
+    }
+
+    @NonNull
+    private static List<String> toDisplayNames(@NonNull List<? extends Enum<?>> enums) {
+        List<String> names = new ArrayList<>();
+        for (Enum<?> e : enums) {
+            names.add(humanizeEnumName(e.name()));
+        }
+        return names;
+    }
+
+    @NonNull
+    private static String humanizeEnumName(@NonNull String enumName) {
+        String[] parts = enumName.split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (part == null || part.isEmpty()) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            String lower = part.toLowerCase(Locale.US);
+            sb.append(Character.toUpperCase(lower.charAt(0))).append(lower.substring(1));
+        }
+        return sb.length() == 0 ? enumName : sb.toString();
+    }
+
+    private void updateUploadUiIdle() {
+        if (uploadProgress != null) {
+            uploadProgress.setVisibility(View.GONE);
+            uploadProgress.setProgress(0);
+        }
+    }
+
+    private void maybeShowFirstTimeTutorial() {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences(PREFS_MAPPING_TUTORIAL, AppCompatActivity.MODE_PRIVATE);
+            if (prefs.getBoolean(KEY_MAPPING_TUTORIAL_SHOWN, false)) {
+                return;
+            }
+            if (activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
+            prefs.edit().putBoolean(KEY_MAPPING_TUTORIAL_SHOWN, true).apply();
+            new AlertDialog.Builder(activity)
+                    .setTitle(R.string.uxsdk_mapping_tutorial_title)
+                    .setMessage(R.string.uxsdk_mapping_tutorial_message)
+                    .setPositiveButton(R.string.uxsdk_app_ok, null)
+                    .show();
+        } catch (Exception ignored) {
+            // Do not block mission flow if tutorial state cannot be read/written.
         }
     }
 

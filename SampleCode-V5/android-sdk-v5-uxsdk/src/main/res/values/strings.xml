@@ -1206,11 +1206,11 @@
     <string name="uxsdk_mission_type_custom">Custom</string>
     <string name="uxsdk_mission_type_not_implemented">Not implemented in this sample.</string>
     <string name="uxsdk_mission_picker_waypoint_title">Waypoint Mission</string>
-    <string name="uxsdk_mission_picker_waypoint_subtitle">M3</string>
+    <string name="uxsdk_mission_picker_waypoint_subtitle">Plan and fly point-to-point inspection routes.</string>
     <string name="uxsdk_mission_picker_hotpoint_title">Hot Point</string>
     <string name="uxsdk_mission_picker_hotpoint_subtitle">Coming soon</string>
     <string name="uxsdk_mission_picker_mapping_title">Mapping</string>
-    <string name="uxsdk_mission_picker_mapping_subtitle">Coming soon</string>
+    <string name="uxsdk_mission_picker_mapping_subtitle">Generate grid waypoints for area mapping missions.</string>
     <string name="uxsdk_mapping_drawer_title">Mapping Mission</string>
     <string name="uxsdk_mapping_tap_map_hint">Tap on map to add polygon vertices.</string>
     <string name="uxsdk_mapping_predefined_shapes">Predefined Shapes</string>
@@ -1249,8 +1249,16 @@
     <string name="uxsdk_mapping_limit_waypoints">Waypoint count limited to %1$d for performance.</string>
     <string name="uxsdk_mapping_limit_distance">Route distance exceeds limit (%1$.0f m).</string>
     <string name="uxsdk_mapping_limit_battery">Estimated flight time exceeds safe battery window.</string>
-    <string name="uxsdk_mapping_upload_not_ready">Mapping upload is UI-ready. Hook this to KMZ upload flow next.</string>
-    <string name="uxsdk_mapping_start_not_ready">Mapping start is UI-ready. Enable after successful upload.</string>
+    <string name="uxsdk_mapping_upload_not_ready">Mapping upload is not ready.</string>
+    <string name="uxsdk_mapping_start_not_ready">Mapping start is not ready.</string>
+    <string name="uxsdk_mapping_upload_ok">Mapping mission uploaded to aircraft.</string>
+    <string name="uxsdk_mapping_upload_fail">Mapping upload failed: %s</string>
+    <string name="uxsdk_mapping_save_first">Upload mapping mission before starting.</string>
+    <string name="uxsdk_mapping_start_ok">Mapping mission start requested.</string>
+    <string name="uxsdk_mapping_start_fail">Mapping start failed: %s</string>
+    <string name="uxsdk_mapping_kmz_save_fail">Could not build mapping KMZ: %s</string>
+    <string name="uxsdk_mapping_tutorial_title">Mapping quick start</string>
+    <string name="uxsdk_mapping_tutorial_message">1) Draw or pick a shape to define the area.\n2) Set altitude, speed, spacing, and mission safety actions.\n3) Generate waypoints, then upload and start.\n\nAny geometry or mission-setting change requires re-upload before start.</string>
 
     <string name="uxsdk_waypoint_tap_map_hint">Waypoint planning: tap the map to add each waypoint.</string>
     <string name="uxsdk_waypoint_plan_menu_title">Waypoint plan</string>
