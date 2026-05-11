@@ -95,6 +95,8 @@ import dji.v5.ux.map.MapWidget;
 import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
 import dji.v5.ux.mapkit.core.models.DJILatLng;
+import dji.v5.ux.sample.showcase.livestream.LiveStreamBridge;
+import dji.v5.ux.sample.showcase.livestream.RtmpSettingsPanel;
 import dji.v5.ux.sample.showcase.waypoint.MappingPlanner;
 import dji.v5.ux.sample.showcase.waypoint.WaypointPlanner;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegate;
@@ -146,6 +148,8 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     private View waypointMissionDrawerShell;
     private MappingPlanner mappingPlanner;
     private View mappingDrawerShell;
+    private RtmpSettingsPanel rtmpSettingsPanel;
+    private LiveStreamBridge liveStreamBridge;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -235,6 +239,15 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 (ConstraintLayout.LayoutParams) mapWidget.getLayoutParams());
         fpvFullLayoutParams = new ConstraintLayout.LayoutParams(
                 (ConstraintLayout.LayoutParams) fpvParentView.getLayoutParams());
+
+        View rightDrawerRoot = findViewById(R.id.uxsdk_right_drawer_root);
+        if (rightDrawerRoot != null) {
+            rtmpSettingsPanel = new RtmpSettingsPanel(this);
+            rtmpSettingsPanel.bind(rightDrawerRoot);
+            liveStreamBridge = new LiveStreamBridge(this, rtmpSettingsPanel);
+            rtmpSettingsPanel.setHost(liveStreamBridge);
+            liveStreamBridge.attach();
+        }
 
         initClickListener();
 
@@ -498,6 +511,12 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         if (waypointPlanner != null) {
             waypointPlanner.clearPlanning();
         }
+        if (liveStreamBridge != null) {
+            liveStreamBridge.detach();
+        }
+        if (rtmpSettingsPanel != null) {
+            rtmpSettingsPanel.onDestroy();
+        }
         mapWidget.onDestroy();
         MediaDataCenter.getInstance().getCameraStreamManager()
                 .removeAvailableCameraUpdatedListener(availableCameraUpdatedListener);
@@ -705,6 +724,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         lastLensType = lensType;
         updateViewVisibility(devicePosition, lensType);
         updateInteractionEnabled();
+        if (rtmpSettingsPanel != null) {
+            rtmpSettingsPanel.updateCameraFromHost(devicePosition);
+        }
         if (fpvInteractionWidget.isInteractionEnabled())
             fpvInteractionWidget.updateCameraSource(devicePosition, lensType);
         if (lensControlWidget.getVisibility() == View.VISIBLE)

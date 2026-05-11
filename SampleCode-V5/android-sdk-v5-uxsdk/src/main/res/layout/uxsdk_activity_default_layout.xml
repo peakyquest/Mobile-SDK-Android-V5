@@ -363,15 +363,16 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <dji.v5.ux.core.widget.setting.SettingPanelWidget
-        android:id="@+id/manual_right_nav_setting"
+    <!--
+       Right drawer: hosts both the DJI SettingPanelWidget and the custom
+       RTMP live-stream settings panel, switched via a tab strip.
+       layout_width/height/gravity are mandatory on <include> so DrawerLayout
+       recognises this child as the end-drawer.
+    -->
+    <include
+        layout="@layout/uxsdk_drawer_right_settings"
         android:layout_width="@dimen/uxsdk_510_dp"
         android:layout_height="match_parent"
-        android:layout_gravity="end"
-        android:background="@color/uxsdk_fpv_popover_content_background_color"
-        android:descendantFocusability="afterDescendants">
-
-    </dji.v5.ux.core.widget.setting.SettingPanelWidget>
-
+        android:layout_gravity="end" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

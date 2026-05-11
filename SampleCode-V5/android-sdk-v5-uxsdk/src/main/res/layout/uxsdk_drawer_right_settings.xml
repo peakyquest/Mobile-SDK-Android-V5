@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Right-edge drawer of DefaultLayoutActivity. Wraps the DJI SettingPanelWidget
+  ~ alongside a custom RTMP live-stream settings panel and lets the user switch
+  ~ between them via a tab strip.
+  -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/uxsdk_right_drawer_root"
+    android:layout_width="@dimen/uxsdk_510_dp"
+    android:layout_height="match_parent"
+    android:layout_gravity="end"
+    android:background="@color/uxsdk_fpv_popover_content_background_color"
+    android:descendantFocusability="afterDescendants"
+    android:orientation="vertical">
+
+    <!-- Tab strip -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/uxsdk_black_50_percent"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/uxsdk_right_drawer_tab_aircraft"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_rtmp_tab_bg"
+            android:gravity="center"
+            android:text="@string/uxsdk_right_drawer_tab_aircraft"
+            android:textColor="@color/uxsdk_rtmp_tab_text"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/uxsdk_right_drawer_tab_rtmp"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_rtmp_tab_bg"
+            android:gravity="center"
+            android:text="@string/uxsdk_right_drawer_tab_rtmp"
+            android:textColor="@color/uxsdk_rtmp_tab_text"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Content host: shows exactly one of these at a time. -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <dji.v5.ux.core.widget.setting.SettingPanelWidget
+            android:id="@+id/manual_right_nav_setting"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <include
+            android:id="@+id/uxsdk_right_drawer_rtmp_panel"
+            layout="@layout/uxsdk_panel_rtmp_settings"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

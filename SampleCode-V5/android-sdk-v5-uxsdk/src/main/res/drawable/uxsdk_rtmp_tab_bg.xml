@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:state_selected="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/uxsdk_white_10_percent" />
+                </shape>
+            </item>
+            <item
+                android:bottom="0dp"
+                android:gravity="bottom"
+                android:height="3dp">
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/uxsdk_blue" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/uxsdk_transparent" />
+        </shape>
+    </item>
+</selector>

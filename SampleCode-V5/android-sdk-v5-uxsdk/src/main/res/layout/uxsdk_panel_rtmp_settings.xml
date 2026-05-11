@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ RTMP live-stream configuration panel.
+  ~ Hosted inside the right drawer of DefaultLayoutActivity.
+  -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/uxsdk_panel_rtmp_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/uxsdk_fpv_popover_content_background_color"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:paddingStart="14dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="14dp"
+    android:paddingBottom="10dp"
+    android:theme="@style/uxsdk_waypoint_drawer_theme">
+
+    <!-- Status row: live indicator dot + state label + stop button shortcut -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/uxsdk_rtmp_status_card_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp">
+
+        <View
+            android:id="@+id/uxsdk_rtmp_status_dot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/uxsdk_rtmp_status_dot"
+            android:backgroundTint="@color/uxsdk_white_50_percent" />
+
+        <TextView
+            android:id="@+id/uxsdk_rtmp_status_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="@string/uxsdk_rtmp_status_idle"
+            android:textColor="@color/uxsdk_white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/uxsdk_rtmp_status_uptime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/uxsdk_white_70_percent"
+            android:textSize="12sp"
+            tools:text="00:00:42" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:scrollbars="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="12dp">
+
+            <!-- ── URL ─────────────────────────────────────────────────── -->
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/uxsdk_rtmp_section_url"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/uxsdk_rtmp_url_hint_help"
+                android:textColor="@color/uxsdk_white_60_percent"
+                android:textSize="11sp" />
+
+            <androidx.appcompat.widget.AppCompatEditText
+                android:id="@+id/uxsdk_rtmp_et_url"
+                style="@style/uxsdk_waypoint_drawer_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:hint="@string/uxsdk_rtmp_url_hint"
+                android:importantForAutofill="no"
+                android:inputType="textUri"
+                android:maxLength="500" />
+
+            <!-- ── Quality ─────────────────────────────────────────────── -->
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/uxsdk_rtmp_section_quality"
+                android:textStyle="bold" />
+
+            <RadioGroup
+                android:id="@+id/uxsdk_rtmp_rg_quality"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_q_sd"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:tag="1"
+                    android:text="@string/uxsdk_rtmp_quality_sd"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_q_hd"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:checked="true"
+                    android:tag="2"
+                    android:text="@string/uxsdk_rtmp_quality_hd"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_q_fhd"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:tag="3"
+                    android:text="@string/uxsdk_rtmp_quality_fhd"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_q_original"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:tag="100"
+                    android:text="@string/uxsdk_rtmp_quality_original"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+            </RadioGroup>
+
+            <!-- ── Bitrate ─────────────────────────────────────────────── -->
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/uxsdk_rtmp_section_bitrate"
+                android:textStyle="bold" />
+
+            <RadioGroup
+                android:id="@+id/uxsdk_rtmp_rg_bitrate_mode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_br_auto"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:checked="true"
+                    android:text="@string/uxsdk_rtmp_bitrate_auto"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_br_manual"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:text="@string/uxsdk_rtmp_bitrate_manual"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:id="@+id/uxsdk_rtmp_manual_bitrate_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <SeekBar
+                    android:id="@+id/uxsdk_rtmp_sb_bitrate"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="100"
+                    android:progress="20" />
+
+                <TextView
+                    android:id="@+id/uxsdk_rtmp_tv_bitrate"
+                    android:layout_width="80dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="12sp"
+                    tools:text="2048 kbps" />
+            </LinearLayout>
+
+            <!-- ── Camera (local preview) scale ────────────────────────── -->
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/uxsdk_rtmp_section_camera_scale"
+                android:textStyle="bold" />
+
+            <RadioGroup
+                android:id="@+id/uxsdk_rtmp_rg_cam_scale"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_cam_scale_fix_xy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:tag="0"
+                    android:text="@string/uxsdk_rtmp_scale_fix_xy"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_cam_scale_crop"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:tag="1"
+                    android:text="@string/uxsdk_rtmp_scale_center_crop"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_cam_scale_inside"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:checked="true"
+                    android:tag="2"
+                    android:text="@string/uxsdk_rtmp_scale_center_inside"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+            </RadioGroup>
+
+            <!-- ── Live stream (outbound) scale ────────────────────────── -->
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/uxsdk_rtmp_section_live_scale"
+                android:textStyle="bold" />
+
+            <RadioGroup
+                android:id="@+id/uxsdk_rtmp_rg_live_scale"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_live_scale_fix_xy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:tag="0"
+                    android:text="@string/uxsdk_rtmp_scale_fix_xy"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_live_scale_crop"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:checked="true"
+                    android:tag="1"
+                    android:text="@string/uxsdk_rtmp_scale_center_crop"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+
+                <RadioButton
+                    android:id="@+id/uxsdk_rtmp_rb_live_scale_inside"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:buttonTint="@color/uxsdk_white"
+                    android:tag="2"
+                    android:text="@string/uxsdk_rtmp_scale_center_inside"
+                    android:textColor="@color/uxsdk_white"
+                    android:textSize="13sp" />
+            </RadioGroup>
+
+            <!-- ── Live stats ──────────────────────────────────────────── -->
+            <TextView
+                style="@style/uxsdk_waypoint_drawer_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/uxsdk_rtmp_section_stats"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/uxsdk_waypoint_drawer_edittext_bg"
+                android:orientation="vertical"
+                android:paddingStart="12dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:id="@+id/uxsdk_rtmp_tv_stats_resolution"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/uxsdk_white_70_percent"
+                    android:textSize="12sp"
+                    tools:text="Resolution: —" />
+
+                <TextView
+                    android:id="@+id/uxsdk_rtmp_tv_stats_fps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/uxsdk_white_70_percent"
+                    android:textSize="12sp"
+                    tools:text="FPS: —" />
+
+                <TextView
+                    android:id="@+id/uxsdk_rtmp_tv_stats_bitrate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/uxsdk_white_70_percent"
+                    android:textSize="12sp"
+                    tools:text="Bitrate: —" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/uxsdk_rtmp_tv_error"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="#FFFF6B6B"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="Stream error: connection refused"
+                tools:visibility="visible" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ── Action bar (Save / Start / Stop) ───────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/uxsdk_rtmp_btn_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:minHeight="44dp"
+            android:text="@string/uxsdk_rtmp_btn_save"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/uxsdk_rtmp_btn_start"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:minHeight="44dp"
+            android:text="@string/uxsdk_rtmp_btn_start"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/uxsdk_rtmp_btn_stop"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:ellipsize="end"
+            android:enabled="false"
+            android:maxLines="1"
+            android:minHeight="44dp"
+            android:text="@string/uxsdk_rtmp_btn_stop"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text"
+            android:textSize="12sp" />
+    </LinearLayout>
+</LinearLayout>

@@ -1361,4 +1361,50 @@
     <string name="uxsdk_default_layout_fly_zone_cat_enhanced">Enhanced warning zones</string>
     <string name="uxsdk_default_layout_fly_zone_cat_restricted">Restricted / no-fly zones</string>
     <string name="uxsdk_default_layout_dialog_done">Done</string>
+
+    <!-- ── Right-drawer tabs ─────────────────────────────────────────── -->
+    <string name="uxsdk_right_drawer_tab_aircraft">Aircraft</string>
+    <string name="uxsdk_right_drawer_tab_rtmp">Live Stream</string>
+
+    <!-- ── RTMP live-streaming panel ────────────────────────────────── -->
+    <string name="uxsdk_rtmp_section_url">RTMP URL</string>
+    <string name="uxsdk_rtmp_section_quality">Quality</string>
+    <string name="uxsdk_rtmp_section_bitrate">Bitrate</string>
+    <string name="uxsdk_rtmp_section_camera_scale">Camera Scale</string>
+    <string name="uxsdk_rtmp_section_live_scale">Live Stream Scale</string>
+    <string name="uxsdk_rtmp_section_stats">Live Stats</string>
+
+    <string name="uxsdk_rtmp_url_hint">rtmp://server/app/stream-key</string>
+    <string name="uxsdk_rtmp_url_hint_help">Full RTMP endpoint, including stream key.</string>
+
+    <string name="uxsdk_rtmp_quality_sd">SD</string>
+    <string name="uxsdk_rtmp_quality_hd">HD</string>
+    <string name="uxsdk_rtmp_quality_fhd">Full HD</string>
+    <string name="uxsdk_rtmp_quality_original">Original</string>
+
+    <string name="uxsdk_rtmp_bitrate_auto">Auto</string>
+    <string name="uxsdk_rtmp_bitrate_manual">Manual</string>
+    <string name="uxsdk_rtmp_bitrate_kbps">%1$d kbps</string>
+
+    <string name="uxsdk_rtmp_scale_fix_xy">Fix XY</string>
+    <string name="uxsdk_rtmp_scale_center_crop">Center Crop</string>
+    <string name="uxsdk_rtmp_scale_center_inside">Center Inside</string>
+
+    <string name="uxsdk_rtmp_status_idle">Idle</string>
+    <string name="uxsdk_rtmp_status_connecting">Connecting…</string>
+    <string name="uxsdk_rtmp_status_live">Live</string>
+    <string name="uxsdk_rtmp_status_error">Error</string>
+
+    <string name="uxsdk_rtmp_btn_save">Save</string>
+    <string name="uxsdk_rtmp_btn_start">Start</string>
+    <string name="uxsdk_rtmp_btn_stop">Stop</string>
+
+    <string name="uxsdk_rtmp_msg_url_empty">Enter an RTMP URL first.</string>
+    <string name="uxsdk_rtmp_msg_url_invalid">URL must start with rtmp:// or rtmps://</string>
+    <string name="uxsdk_rtmp_msg_saved">Settings saved.</string>
+
+    <string name="uxsdk_rtmp_stats_resolution">Resolution: %1$s</string>
+    <string name="uxsdk_rtmp_stats_fps">FPS: %1$s</string>
+    <string name="uxsdk_rtmp_stats_bitrate">Bitrate: %1$s</string>
+    <string name="uxsdk_rtmp_stats_placeholder">—</string>
 </resources>
