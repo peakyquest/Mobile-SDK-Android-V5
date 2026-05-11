@@ -27,8 +27,12 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -43,6 +47,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatCheckBox;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -406,39 +411,82 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void showMapTypeDialog() {
-        String[] labels = {"Normal", "Satellite", "Hybrid"};
-        String[] styleUrls = {
+        View root = LayoutInflater.from(this).inflate(R.layout.uxsdk_dialog_default_layout_map_style, null, false);
+        final String[] styleUrls = {
                 MaplibreStyle.MAPBOX_STREETS,
                 MaplibreStyle.SATELLITE,
                 MaplibreStyle.SATELLITE_STREETS
         };
+        final int[] rowIds = {
+                R.id.uxsdk_map_style_row_standard,
+                R.id.uxsdk_map_style_row_satellite,
+                R.id.uxsdk_map_style_row_hybrid
+        };
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Map style");
-        builder.setItems(labels, (dialog, which) -> {
-            DJIMap map = mapWidget.getMap();
-            if (map instanceof MaplibreMapDelegate) {
-                ((MaplibreMapDelegate) map).setMapStyleUri(styleUrls[which]);
-            } else if (map instanceof MaplibreMapDelegateKt) {
-                ((MaplibreMapDelegateKt) map).setMapStyleUri(styleUrls[which]);
-            }
-        });
-        builder.show();
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.UXSDKDefaultLayoutDarkAlertDialog)
+                .setView(root)
+                .setNegativeButton(R.string.uxsdk_app_cancel, (d, w) -> d.dismiss())
+                .create();
+        for (int i = 0; i < rowIds.length; i++) {
+            final int which = i;
+            root.findViewById(rowIds[i]).setOnClickListener(v -> {
+                DJIMap map = mapWidget.getMap();
+                if (map instanceof MaplibreMapDelegate) {
+                    ((MaplibreMapDelegate) map).setMapStyleUri(styleUrls[which]);
+                } else if (map instanceof MaplibreMapDelegateKt) {
+                    ((MaplibreMapDelegateKt) map).setMapStyleUri(styleUrls[which]);
+                }
+                dialog.dismiss();
+            });
+        }
+        applyCenteredFlyoutDialogWindow(dialog);
+        dialog.show();
     }
 
     private void showSelectFlyZoneDialog() {
-        String[] categories = {"AUTHORIZATION", "WARNING", "ENHANCED_WARNING", "RESTRICTED"};
-        FlyZoneCategory[] enumCategories = {FlyZoneCategory.AUTHORIZATION, FlyZoneCategory.WARNING, FlyZoneCategory.ENHANCED_WARNING, FlyZoneCategory.RESTRICTED};
-        boolean[] checkedItems = new boolean[enumCategories.length];
-        for (int fzIndex = 0; fzIndex < enumCategories.length; fzIndex++) {
-            checkedItems[fzIndex] = mapWidget.getFlyZoneHelper().isFlyZoneVisible(enumCategories[fzIndex]);
+        View root = LayoutInflater.from(this).inflate(R.layout.uxsdk_dialog_default_layout_fly_zones, null, false);
+        FlyZoneCategory[] enumCategories = {
+                FlyZoneCategory.AUTHORIZATION,
+                FlyZoneCategory.WARNING,
+                FlyZoneCategory.ENHANCED_WARNING,
+                FlyZoneCategory.RESTRICTED
+        };
+        int[] checkIds = {
+                R.id.uxsdk_fly_zone_cb_authorization,
+                R.id.uxsdk_fly_zone_cb_warning,
+                R.id.uxsdk_fly_zone_cb_enhanced_warning,
+                R.id.uxsdk_fly_zone_cb_restricted
+        };
+        for (int i = 0; i < enumCategories.length; i++) {
+            AppCompatCheckBox cb = root.findViewById(checkIds[i]);
+            cb.setChecked(mapWidget.getFlyZoneHelper().isFlyZoneVisible(enumCategories[i]));
+            final FlyZoneCategory category = enumCategories[i];
+            cb.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) ->
+                    mapWidget.getFlyZoneHelper().hideShowFlyZoneOfMap(category, isChecked));
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Fly Zones");
-        builder.setMultiChoiceItems(categories, checkedItems, (dialog, which, isChecked) -> mapWidget.getFlyZoneHelper().hideShowFlyZoneOfMap(enumCategories[which], isChecked));
-        builder.setPositiveButton("OK", null);
-        builder.show();
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.UXSDKDefaultLayoutDarkAlertDialog)
+                .setView(root)
+                .setPositiveButton(R.string.uxsdk_default_layout_dialog_done, (d, w) -> d.dismiss())
+                .create();
+        applyCenteredFlyoutDialogWindow(dialog);
+        dialog.show();
+    }
+
+    /**
+     * Puts the custom panel dead-center on the screen (landscape FPV layouts often default dialogs to the top).
+     */
+    private static void applyCenteredFlyoutDialogWindow(@NonNull AlertDialog dialog) {
+        Window window = dialog.getWindow();
+        if (window == null) {
+            return;
+        }
+        window.setBackgroundDrawableResource(android.R.color.transparent);
+        WindowManager.LayoutParams lp = window.getAttributes();
+        lp.gravity = Gravity.CENTER;
+        lp.width = WindowManager.LayoutParams.MATCH_PARENT;
+        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        window.setAttributes(lp);
     }
 
     private void toggleRightDrawer() {
