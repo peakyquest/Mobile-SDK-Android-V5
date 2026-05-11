@@ -496,5 +496,39 @@
         <item name="android:textSize">16sp</item>
     </style>
 
+    <!-- Default layout: dark professional dialogs (map style & fly zones) -->
+    <style name="UXSDKDefaultLayoutDarkAlertDialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="colorAccent">@color/uxsdk_blue</item>
+        <item name="android:textColorPrimary">@color/uxsdk_white</item>
+        <item name="android:textColorSecondary">@color/uxsdk_white_60_percent</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimAmount">0.6</item>
+        <item name="android:colorControlActivated">@color/uxsdk_blue</item>
+    </style>
+
+    <style name="UXSDKDefaultLayoutDialogTitleText" parent="TextAppearance.AppCompat.Title">
+        <item name="android:textColor">@color/uxsdk_white</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+
+    <style name="UXSDKDefaultLayoutDialogSubtitleText" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textColor">@color/uxsdk_white_60_percent</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:lineSpacingMultiplier">1.2</item>
+    </style>
+
+    <style name="UXSDKDefaultLayoutMapOptionTitle" parent="TextAppearance.AppCompat.Subhead">
+        <item name="android:textColor">@color/uxsdk_white</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="UXSDKDefaultLayoutMapOptionDesc" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textColor">@color/uxsdk_white_50_percent</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
 
 </resources>

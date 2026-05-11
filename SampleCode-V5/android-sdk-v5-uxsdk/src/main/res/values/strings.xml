@@ -1345,4 +1345,20 @@
 
     <string name="uxsdk_waypoint_tutorial_title">Waypoint Mission Quick Guide</string>
     <string name="uxsdk_waypoint_tutorial_message">1) Tap on the map to add waypoints.\n2) Use the left/right arrows to switch selected waypoint.\n3) Edit altitude, speed, heading, action, and turn mode, then tap Apply.\n4) Expand Mission settings for finish action, RC lost action, and global speed.\n5) Review summary (count, distance, ETA).\n6) Upload mission, then Start (Start is enabled only after successful upload).</string>
+
+    <string name="uxsdk_default_layout_map_style_title">Map appearance</string>
+    <string name="uxsdk_default_layout_map_style_subtitle">Choose the basemap style for the flight map.</string>
+    <string name="uxsdk_default_layout_map_style_normal_title">Standard</string>
+    <string name="uxsdk_default_layout_map_style_normal_desc">Streets and labels; best for navigation and place names.</string>
+    <string name="uxsdk_default_layout_map_style_satellite_title">Satellite</string>
+    <string name="uxsdk_default_layout_map_style_satellite_desc">Aerial imagery without road labels.</string>
+    <string name="uxsdk_default_layout_map_style_hybrid_title">Hybrid</string>
+    <string name="uxsdk_default_layout_map_style_hybrid_desc">Satellite imagery with roads and labels overlaid.</string>
+    <string name="uxsdk_default_layout_fly_zones_title">Geo zones on map</string>
+    <string name="uxsdk_default_layout_fly_zones_subtitle">Toggle which Fly Safe layers are drawn. Visibility updates immediately. Zone data depends on aircraft position and connectivity.</string>
+    <string name="uxsdk_default_layout_fly_zone_cat_authorization">Authorization zones</string>
+    <string name="uxsdk_default_layout_fly_zone_cat_warning">Warning zones</string>
+    <string name="uxsdk_default_layout_fly_zone_cat_enhanced">Enhanced warning zones</string>
+    <string name="uxsdk_default_layout_fly_zone_cat_restricted">Restricted / no-fly zones</string>
+    <string name="uxsdk_default_layout_dialog_done">Done</string>
 </resources>
