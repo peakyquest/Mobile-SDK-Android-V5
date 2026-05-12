@@ -1366,8 +1366,34 @@
     <string name="uxsdk_right_drawer_tab_aircraft">Aircraft</string>
     <string name="uxsdk_right_drawer_tab_rtmp">Live Stream</string>
 
+    <string name="uxsdk_default_layout_btn_live_stream">Live Stream</string>
+    <string name="uxsdk_default_layout_live_stream_dialog_title">Live Stream</string>
+
     <!-- ── RTMP live-streaming panel ────────────────────────────────── -->
     <string name="uxsdk_rtmp_section_url">RTMP URL</string>
+    <string name="uxsdk_rtmp_intro_title">Before you go live</string>
+    <string name="uxsdk_rtmp_intro_body">An RTMP ingest server must already be running and reachable from this device (same Wi‑Fi/LAN or routable network). Common stacks: NGINX with the RTMP module, MediaMTX, or Wowza Streaming Engine. Enter the full publish URL your server expects.</string>
+    <string name="uxsdk_rtmp_intro_example_url">rtmp://&lt;server-ip&gt;/live/stream</string>
+    <string name="uxsdk_rtmp_setup_toggle_expand">Setup guide ▼</string>
+    <string name="uxsdk_rtmp_setup_toggle_collapse">Setup guide ▲</string>
+    <string name="uxsdk_rtmp_setup_guide_body">• NGINX-RTMP: configure application name (e.g. live) and stream key.\n• MediaMTX: default paths often accept /live/stream; check API and auth.\n• Wowza: create Live application, use Primary URL + Stream Name.\n• Use rtmp:// for LAN tests; rtmps:// when TLS termination is in front.\n• DJI MSDK v5 exposes ILiveStreamManager (RTMP settings, quality, bitrate mode, scale) and ICameraStreamManager (available cameras, decoder keep-alive). Adaptive outbound bitrate is controlled via LiveVideoBitrateMode.AUTO per API docs — not a custom ABR ladder.\n• Audio: confirm product + server support in release notes; many aircraft RTMP paths are video-first.\n• Reconnect: SDK reports status via LiveStreamStatusListener; handle FAILED / link loss and let the operator restart after fixing network.\n• Hardware: thermal / multi-sensor products still use ComponentIndexType for stream source — pick the camera the pilot is publishing from FPV.</string>
+    <string name="uxsdk_rtmp_section_camera_source">Camera source</string>
+    <string name="uxsdk_rtmp_section_active_url">Last saved RTMP URL</string>
+    <string name="uxsdk_rtmp_section_diagnostics">Connection log</string>
+    <string name="uxsdk_rtmp_btn_copy">Copy</string>
+    <string name="uxsdk_rtmp_health_good">Health: Good</string>
+    <string name="uxsdk_rtmp_health_marginal">Health: Marginal</string>
+    <string name="uxsdk_rtmp_health_connecting">Health: Connecting…</string>
+    <string name="uxsdk_rtmp_health_offline">Health: Offline</string>
+    <string name="uxsdk_rtmp_camera_summary">Available: %1$s\nActive FPV: %2$s\nLive source: %3$s</string>
+    <string name="uxsdk_rtmp_camera_none">No cameras reported yet — connect the aircraft and wait for video.</string>
+    <string name="uxsdk_rtmp_toast_camera_unavailable">Camera not ready for live stream: %1$s</string>
+    <string name="uxsdk_rtmp_toast_server_unreachable">RTMP server or network issue: %1$s</string>
+    <string name="uxsdk_rtmp_confirm_start_title">Start live stream?</string>
+    <string name="uxsdk_rtmp_confirm_start_message">Start RTMP publish to the configured URL using the selected camera?</string>
+    <string name="uxsdk_rtmp_confirm_stop_title">Stop live stream?</string>
+    <string name="uxsdk_rtmp_confirm_stop_message">Stop the current RTMP session?</string>
+    <string name="uxsdk_rtmp_toast_clipboard_copied">URL copied</string>
     <string name="uxsdk_rtmp_section_quality">Quality</string>
     <string name="uxsdk_rtmp_section_bitrate">Bitrate</string>
     <string name="uxsdk_rtmp_section_camera_scale">Camera Scale</string>
@@ -1375,7 +1401,7 @@
     <string name="uxsdk_rtmp_section_stats">Live Stats</string>
 
     <string name="uxsdk_rtmp_url_hint">rtmp://server/app/stream-key</string>
-    <string name="uxsdk_rtmp_url_hint_help">Full RTMP endpoint, including stream key.</string>
+    <string name="uxsdk_rtmp_url_hint_help">Full RTMP endpoint, including stream key. The URL is synced with the MSDK sample “Testing Tools → Live Stream” RTMP field (same storage key as LiveStreamVM) when you Save or Start.</string>
 
     <string name="uxsdk_rtmp_quality_sd">SD</string>
     <string name="uxsdk_rtmp_quality_hd">HD</string>
@@ -1391,9 +1417,21 @@
     <string name="uxsdk_rtmp_scale_center_inside">Center Inside</string>
 
     <string name="uxsdk_rtmp_status_idle">Idle</string>
-    <string name="uxsdk_rtmp_status_connecting">Connecting…</string>
-    <string name="uxsdk_rtmp_status_live">Live</string>
+    <string name="uxsdk_rtmp_status_connecting">Connecting</string>
+    <string name="uxsdk_rtmp_status_live">LIVE</string>
     <string name="uxsdk_rtmp_status_error">Error</string>
+    <string name="uxsdk_rtmp_status_reconnecting">Reconnecting</string>
+    <string name="uxsdk_rtmp_status_stopped">Stopped</string>
+    <string name="uxsdk_rtmp_status_disconnected">Disconnected</string>
+    <string name="uxsdk_rtmp_status_failed">Failed</string>
+    <string name="uxsdk_rtmp_uptime_with_separator"> | %1$s</string>
+
+    <string name="uxsdk_rtmp_toast_live">RTMP Stream is Live</string>
+    <string name="uxsdk_rtmp_toast_streaming_started">Streaming Started Successfully</string>
+    <string name="uxsdk_rtmp_toast_stopped">RTMP Stream Stopped</string>
+    <string name="uxsdk_rtmp_toast_streaming_error">Streaming Error: %1$s</string>
+    <string name="uxsdk_rtmp_toast_connection_failed">RTMP Connection Failed</string>
+    <string name="uxsdk_rtmp_err_connection_timeout">Connection timed out before the stream went live.</string>
 
     <string name="uxsdk_rtmp_btn_save">Save</string>
     <string name="uxsdk_rtmp_btn_start">Start</string>
@@ -1402,6 +1440,9 @@
     <string name="uxsdk_rtmp_msg_url_empty">Enter an RTMP URL first.</string>
     <string name="uxsdk_rtmp_msg_url_invalid">URL must start with rtmp:// or rtmps://</string>
     <string name="uxsdk_rtmp_msg_saved">Settings saved.</string>
+    <string name="uxsdk_rtmp_msg_apply_before_start">Apply settings before starting.</string>
+    <string name="uxsdk_rtmp_msg_host_not_ready">Live stream is not wired to the DJI SDK (host missing). Reopen this screen or restart the app.</string>
+    <string name="uxsdk_rtmp_hint_live_stream_not_ready">Wait until the aircraft is connected and the main FPV picture is stable, then tap Save and Start again. This build matches the live-stream camera to the primary FPV source and keeps the video decoder active while the flight screen is open. You can also start once from Testing Tools → Live Stream with the same RTMP URL to confirm the server.</string>
 
     <string name="uxsdk_rtmp_stats_resolution">Resolution: %1$s</string>
     <string name="uxsdk_rtmp_stats_fps">FPS: %1$s</string>

@@ -223,19 +223,36 @@
             app:layout_constraintTop_toBottomOf="@+id/widget_focus_exposure_switch"
             app:layout_constraintVertical_bias="0.05" />
 
+        <Button
+            android:id="@+id/uxsdk_btn_live_stream"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="100dp"
+            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
+            android:minHeight="40dp"
+            android:text="@string/uxsdk_default_layout_btn_live_stream"
+            android:textAllCaps="false"
+            android:textColor="@color/uxsdk_waypoint_drawer_btn_text"
+            android:textSize="13sp"
+            app:layout_constraintEnd_toEndOf="@+id/widget_take_off"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="TouchTargetSizeCheck" />
+
         <dji.v5.ux.flight.takeoff.TakeOffWidget
             android:id="@+id/widget_take_off"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginStart="12dp"
-            android:layout_marginTop="125dp"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="5dp"
             android:padding="3dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintDimensionRatio="@string/uxsdk_widget_default_ratio"
             app:layout_constraintHeight_percent="0.1"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/uxsdk_btn_live_stream"
             app:layout_constraintVertical_bias="0.3"
             tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 
@@ -364,8 +381,8 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!--
-       Right drawer: hosts both the DJI SettingPanelWidget and the custom
-       RTMP live-stream settings panel, switched via a tab strip.
+       Right drawer: DJI SettingPanelWidget only. RTMP live stream opens from the
+       "Live Stream" button above Takeoff (see uxsdk_btn_live_stream).
        layout_width/height/gravity are mandatory on <include> so DrawerLayout
        recognises this child as the end-drawer.
     -->
