@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        style="@style/uxsdk_waypoint_drawer_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/uxsdk_mission_drawer_section_log"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/uxsdk_mission_drawer_tv_log"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:background="@color/uxsdk_black_50_percent"
+        android:fontFamily="monospace"
+        android:maxLines="10"
+        android:minLines="3"
+        android:padding="8dp"
+        android:scrollbars="vertical"
+        android:textColor="@color/uxsdk_white_60_percent"
+        android:textSize="10sp"
+        tools:text="[12:00:01] Planning started" />
+</LinearLayout>

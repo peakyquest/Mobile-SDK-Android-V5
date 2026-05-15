@@ -132,6 +132,7 @@ public final class RtmpSettingsPanel {
     private TextView tvStatsFps;
     private TextView tvStatsBitrate;
     private TextView tvHealth;
+    private TextView tvMetricsDetail;
     private TextView tvDiagnostics;
     private TextView tvError;
     private Button btnSave;
@@ -187,6 +188,7 @@ public final class RtmpSettingsPanel {
         tvStatsFps = panelRoot.findViewById(R.id.uxsdk_rtmp_tv_stats_fps);
         tvStatsBitrate = panelRoot.findViewById(R.id.uxsdk_rtmp_tv_stats_bitrate);
         tvHealth = panelRoot.findViewById(R.id.uxsdk_rtmp_tv_health);
+        tvMetricsDetail = panelRoot.findViewById(R.id.uxsdk_rtmp_tv_metrics_detail);
         tvDiagnostics = panelRoot.findViewById(R.id.uxsdk_rtmp_tv_diagnostics);
         tvError = panelRoot.findViewById(R.id.uxsdk_rtmp_tv_error);
         btnSave = panelRoot.findViewById(R.id.uxsdk_rtmp_btn_save);
@@ -321,6 +323,12 @@ public final class RtmpSettingsPanel {
                 if (tvError != null) {
                     tvError.setVisibility(View.GONE);
                 }
+                renderLiveDiagnosticsMetrics(null);
+                setStreamHealth(
+                        disconnectedIdleLabel
+                                ? activity.getString(R.string.uxsdk_rtmp_health_disconnected)
+                                : activity.getString(R.string.uxsdk_rtmp_health_offline),
+                        disconnectedIdleLabel ? R.color.uxsdk_red_500 : R.color.uxsdk_white_70_percent);
                 break;
             case CONNECTING:
                 if (tvStatus != null) {
@@ -372,6 +380,7 @@ public final class RtmpSettingsPanel {
                     tvError.setText(errorMessage == null ? "" : errorMessage);
                     tvError.setVisibility(View.VISIBLE);
                 }
+                renderLiveDiagnosticsMetrics(null);
                 break;
             case STOPPED:
                 if (tvStatus != null) {
@@ -382,6 +391,7 @@ public final class RtmpSettingsPanel {
                 if (tvError != null) {
                     tvError.setVisibility(View.GONE);
                 }
+                renderLiveDiagnosticsMetrics(null);
                 break;
             default:
                 break;
@@ -405,9 +415,30 @@ public final class RtmpSettingsPanel {
         }
     }
 
+    /**
+     * Multi-line SDK metrics (RTT, packet loss, cache, camera link, reconnects). Pass null to clear.
+     */
+    public void renderLiveDiagnosticsMetrics(@Nullable String block) {
+        if (tvMetricsDetail == null) {
+            return;
+        }
+        if (TextUtils.isEmpty(block)) {
+            tvMetricsDetail.setText("");
+            tvMetricsDetail.setVisibility(View.GONE);
+        } else {
+            tvMetricsDetail.setText(block);
+            tvMetricsDetail.setVisibility(View.VISIBLE);
+        }
+    }
+
     public void setStreamHealth(@NonNull String label) {
+        setStreamHealth(label, R.color.uxsdk_white);
+    }
+
+    public void setStreamHealth(@NonNull String label, int textColorRes) {
         if (tvHealth != null) {
             tvHealth.setText(label);
+            tvHealth.setTextColor(ContextCompat.getColor(activity, textColorRes));
         }
     }
 

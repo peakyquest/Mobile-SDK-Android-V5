@@ -8,6 +8,15 @@
  * {@link ILiveStreamManager#startStream}, {@link ILiveStreamManager#stopStream},
  * {@link ILiveStreamManager#addLiveStreamStatusListener}.
  *
+ * <p>{@link dji.v5.manager.datacenter.livestream.LiveStreamStatus} exposes FPS, vbps, resolution, packet loss,
+ * packet cache length, and RTT (documented as streaming latency) — see
+ * {@code ILiveStreamManager_LiveStreamStatus.html}.
+ *
+ * <p><b>Scaling caveat:</b> UI "Camera (local) scale" maps to {@link ICameraStreamManager#putCameraStreamSurface}
+ * scale for <em>on-device preview surfaces</em>, not to {@code ILiveStreamManager}. Only
+ * {@link ILiveStreamManager#setLiveStreamScaleType} affects the encoded live-stream branch (MSDK 5.10+); changing
+ * quality/scale may require stopping and restarting the stream on some firmware builds.
+ *
  * <p>Decoder readiness: {@link ICameraStreamManager#setKeepAliveDecoding} keeps the pipeline warm so
  * {@code startStream} is less likely to fail with LIVE_STREAM_IS_NOT_READY when no surface briefly
  * references the stream (MSDK 5.8+).
@@ -18,6 +27,7 @@ package dji.v5.ux.sample.showcase.livestream;
 import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.widget.Toast;
 
@@ -25,7 +35,11 @@ import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
+
+import java.lang.reflect.Method;
 
 import dji.sdk.keyvalue.value.common.ComponentIndexType;
 import dji.v5.common.callback.CommonCallbacks;
@@ -54,17 +68,31 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
 
     private static final int MIN_VBPS_FOR_LIVE = 32 * 1024;
     private static final long CONNECTING_TIMEOUT_MS = 45_000L;
+    private static final long STATUS_VERBOSE_INTERVAL_MS = 2_000L;
 
     private final Activity activity;
     private final RtmpSettingsPanel panel;
     private final ILiveStreamManager liveStreamManager;
     private final ICameraStreamManager cameraStreamManager;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final SimpleDateFormat isoFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US);
 
     private boolean attached;
     private boolean configApplied;
     private boolean userRequestedStop;
     private boolean hadEncoderPublish;
+
+    private int reconnectCount;
+    private long lastVerboseStatusLogMs;
+
+    /** Last applied operator settings (for diagnostics when SDK omits vbps, etc.). */
+    @Nullable
+    private String lastAppliedUrl;
+    private int lastCameraScaleTag = -1;
+    private int lastLiveScaleTag = -1;
+    private int lastQualityTag = -1;
+    private boolean lastManualBitrate;
+    private int lastBitrateKbps;
 
     @Nullable
     private Runnable connectingTimeoutRunnable;
@@ -88,7 +116,7 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
                 cancelConnectingTimeout();
                 hadEncoderPublish = false;
                 String msg = safeDescription(error);
-                panel.appendDiagnosticLine("SDK error: " + msg);
+                panel.appendDiagnosticLine("Stream failure (SDK onError): " + msg);
                 emitState(LiveStreamSessionState.FAILED, msg, false, true, classifyError(msg, error));
             });
         }
@@ -109,6 +137,8 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
         attached = true;
         hadEncoderPublish = false;
         userRequestedStop = false;
+        reconnectCount = 0;
+        lastVerboseStatusLogMs = 0L;
         LogUtils.i(LOG_TAG, "attach: register LiveStreamStatusListener, setKeepAliveDecoding(true)");
         enableKeepAliveDecoding(true);
         liveStreamManager.addLiveStreamStatusListener(statusListener);
@@ -135,6 +165,7 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
         }
         hadEncoderPublish = false;
         userRequestedStop = false;
+        panel.appendDiagnosticLine("Encoder / stream session torn down (detach)");
         panel.applyStreamState(LiveStreamSessionState.IDLE, null, false);
     }
 
@@ -159,13 +190,14 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
         userRequestedStop = false;
         hadEncoderPublish = false;
         scheduleConnectingTimeout();
+        panel.appendDiagnosticLine("Encoder init: startStream() requested (RTMP handshake begins after SDK ready)");
         emitState(LiveStreamSessionState.CONNECTING, null, false, false, RtmpSettingsPanel.StreamErrorClass.GENERIC);
         ComponentIndexType cam = liveStreamManager.getCameraIndex();
         panel.appendDiagnosticLine("startStream() cameraIndex=" + cam);
         liveStreamManager.startStream(new CommonCallbacks.CompletionCallback() {
             @Override
             public void onSuccess() {
-                LogUtils.i(LOG_TAG, "startStream onSuccess (await status for LIVE)");
+                LogUtils.i(LOG_TAG, "startStream onSuccess (await LiveStreamStatus for LIVE / publisher metrics)");
             }
 
             @Override
@@ -195,11 +227,12 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
         liveStreamManager.stopStream(new CommonCallbacks.CompletionCallback() {
             @Override
             public void onSuccess() {
-                LogUtils.i(LOG_TAG, "stopStream onSuccess");
+                LogUtils.i(LOG_TAG, "RTMP Stream Stopped Successfully (operator stop, SDK stopStream onSuccess)");
                 postOnUi(() -> {
                     cancelConnectingTimeout();
                     hadEncoderPublish = false;
                     userRequestedStop = false;
+                    panel.appendDiagnosticLine("Stream stopped @ " + isoFmt.format(new Date()));
                     LiveStreamSessionState ps = panel.getStreamSessionState();
                     if (ps == LiveStreamSessionState.CONNECTING) {
                         emitState(LiveStreamSessionState.IDLE, null, false, false, RtmpSettingsPanel.StreamErrorClass.GENERIC);
@@ -227,6 +260,13 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
             return;
         }
         try {
+            lastAppliedUrl = cfg.url.trim();
+            lastCameraScaleTag = cfg.cameraScaleTag;
+            lastLiveScaleTag = cfg.liveScaleTag;
+            lastQualityTag = cfg.qualityTag;
+            lastManualBitrate = cfg.manualBitrate;
+            lastBitrateKbps = cfg.bitrateKbps;
+
             LiveStreamSettings settings = new LiveStreamSettings.Builder()
                     .setLiveStreamType(LiveStreamType.RTMP)
                     .setRtmpSettings(new RtmpSettings.Builder()
@@ -257,18 +297,53 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
 
             configApplied = true;
             panel.setAppliedRtmpUrl(cfg.url.trim());
-            LogUtils.i(LOG_TAG, "applyConfig ok urlLen=" + cfg.url.length()
-                    + " camera=" + cfg.cameraIndex
+
+            LogUtils.i(LOG_TAG, "applyConfig requested: urlLen=" + cfg.url.length()
+                    + " cameraIndex=" + cfg.cameraIndex
                     + " qualityTag=" + cfg.qualityTag
+                    + " cameraScaleTag(UI)=" + cfg.cameraScaleTag
+                    + " liveScaleTag=" + cfg.liveScaleTag
                     + " manualBr=" + cfg.manualBitrate
-                    + " kbps=" + cfg.bitrateKbps);
-            panel.appendDiagnosticLine("Config applied to ILiveStreamManager");
+                    + " bitrateKbps=" + cfg.bitrateKbps);
+            panel.appendDiagnosticLine("Config pushed: qualityTag=" + cfg.qualityTag
+                    + " liveScaleTag=" + cfg.liveScaleTag
+                    + " camScaleTag(UI only)=" + cfg.cameraScaleTag);
+            panel.appendDiagnosticLine(
+                    "Note: camScaleTag is for ICameraStreamManager.putCameraStreamSurface preview, "
+                            + "not ILiveStreamManager. Live encode uses setLiveStreamScaleType (MSDK 5.10+). "
+                            + "Restart stream after quality/scale changes if output looks unchanged.");
+
+            logManagerReadbackAfterApply();
         } catch (Throwable t) {
             LogUtils.e(LOG_TAG, "applyConfig exception: " + t);
             panel.appendDiagnosticLine("applyConfig exception: " + t);
             emitState(LiveStreamSessionState.FAILED,
                     t.getMessage() == null ? t.toString() : t.getMessage(),
                     false, true, RtmpSettingsPanel.StreamErrorClass.GENERIC);
+        }
+    }
+
+    private void logManagerReadbackAfterApply() {
+        try {
+            LogUtils.i(LOG_TAG, "readback getCameraIndex=" + liveStreamManager.getCameraIndex());
+        } catch (Throwable t) {
+            LogUtils.w(LOG_TAG, "readback camera: " + t);
+        }
+        try {
+            LogUtils.i(LOG_TAG, "readback getLiveStreamQuality=" + liveStreamManager.getLiveStreamQuality());
+        } catch (Throwable t) {
+            LogUtils.w(LOG_TAG, "readback quality: " + t);
+        }
+        try {
+            LogUtils.i(LOG_TAG, "readback getLiveStreamScaleType=" + liveStreamManager.getLiveStreamScaleType());
+        } catch (Throwable t) {
+            LogUtils.w(LOG_TAG, "readback liveStreamScaleType (needs MSDK 5.10+): " + t);
+        }
+        try {
+            LogUtils.i(LOG_TAG, "readback bitrateMode=" + liveStreamManager.getLiveVideoBitrateMode()
+                    + " bitrate(bps)=" + liveStreamManager.getLiveVideoBitrate());
+        } catch (Throwable t) {
+            LogUtils.w(LOG_TAG, "readback bitrate: " + t);
         }
     }
 
@@ -280,7 +355,9 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
 
         if (!managerOn) {
             cancelConnectingTimeout();
-            panel.setStreamHealth(activity.getString(R.string.uxsdk_rtmp_health_offline));
+            panel.setStreamHealth(activity.getString(R.string.uxsdk_rtmp_health_offline),
+                    R.color.uxsdk_white_70_percent);
+            panel.renderLiveDiagnosticsMetrics(null);
             if (userRequestedStop) {
                 userRequestedStop = false;
                 hadEncoderPublish = false;
@@ -298,6 +375,7 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
                         || prev == LiveStreamSessionState.RECONNECTING) {
                     hadEncoderPublish = false;
                     LogUtils.w(LOG_TAG, "stream ended without local stop (link/server)");
+                    panel.appendDiagnosticLine("Stream dropped (manager reports not streaming)");
                     emitState(LiveStreamSessionState.IDLE, null, true, true, RtmpSettingsPanel.StreamErrorClass.NETWORK);
                 } else if (prev == LiveStreamSessionState.CONNECTING) {
                     hadEncoderPublish = false;
@@ -308,15 +386,18 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
             if (publishing) {
                 cancelConnectingTimeout();
                 if (!hadEncoderPublish) {
-                    LogUtils.i(LOG_TAG, "publisher active fps=" + status.getFps() + " vbps=" + status.getVbps());
+                    logStreamStartedSuccessBlock(status);
                 }
                 hadEncoderPublish = true;
-                panel.setStreamHealth(healthLabelFromMetrics(status));
+                HealthUi health = healthFromMetrics(status);
+                panel.setStreamHealth(health.label, health.colorRes);
                 emitState(LiveStreamSessionState.LIVE, null, false, true, RtmpSettingsPanel.StreamErrorClass.GENERIC);
             } else {
-                panel.setStreamHealth(activity.getString(R.string.uxsdk_rtmp_health_connecting));
+                panel.setStreamHealth(activity.getString(R.string.uxsdk_rtmp_health_connecting),
+                        R.color.uxsdk_yellow_500);
                 if (hadEncoderPublish) {
                     LogUtils.w(LOG_TAG, "encoder stalled — UI reconnecting");
+                    panel.appendDiagnosticLine("Publisher stalled (fps/vbps low); marking RECONNECTING");
                     emitState(LiveStreamSessionState.RECONNECTING, null, false, false, RtmpSettingsPanel.StreamErrorClass.GENERIC);
                 } else {
                     emitState(LiveStreamSessionState.CONNECTING, null, false, false, RtmpSettingsPanel.StreamErrorClass.GENERIC);
@@ -324,29 +405,171 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
             }
         }
 
-        panel.renderStats(
-                formatResolution(status.getResolution()),
-                formatFps(status.getFps()),
-                formatBitrate(status.getVbps()));
+        ComponentIndexType camIdx = liveStreamManager.getCameraIndex();
+        String encRes = formatResolution(status.getResolution());
+        String camFeed = describeAircraftStreamFrame(cameraStreamManager, camIdx);
+        String resLine = encRes != null && camFeed != null
+                ? activity.getString(R.string.uxsdk_rtmp_stats_encoder_vs_feed, encRes, camFeed)
+                : (encRes != null ? encRes : camFeed);
+
+        int vbps = status.getVbps();
+        String bitrateLine = buildBitrateDisplay(status, vbps);
+
+        panel.renderStats(resLine, formatFps(status.getFps()), bitrateLine);
+
+        int rtt = status.getRtt();
+        int loss = status.getPacketLoss();
+        int cache = status.getPacketCacheLen();
+        String rttStr = (rtt <= 0) ? "—" : rtt + " ms";
+        String metrics = activity.getString(R.string.uxsdk_rtmp_metrics_detail_template,
+                rttStr,
+                loss,
+                cache,
+                camFeed != null ? camFeed : "—",
+                reconnectCount,
+                vbps);
+        panel.renderLiveDiagnosticsMetrics(metrics);
+
+        maybeLogVerboseStatusSnapshot(status, publishing, managerOn);
     }
 
-    private String healthLabelFromMetrics(@NonNull LiveStreamStatus status) {
+    private void logStreamStartedSuccessBlock(@NonNull LiveStreamStatus status) {
+        String ts = isoFmt.format(new Date());
+        String url = lastAppliedUrl == null ? "(unknown)" : lastAppliedUrl;
+        ComponentIndexType cam = liveStreamManager.getCameraIndex();
+        VideoResolution vr = status.getResolution();
+        String res = formatResolution(vr);
+        LogUtils.i(LOG_TAG, "RTMP Stream Started Successfully @ " + ts
+                + " url=" + url
+                + " camera=" + cam
+                + " encoderOut=" + res
+                + " fps=" + status.getFps()
+                + " vbps(raw)=" + status.getVbps()
+                + " qualityTag=" + lastQualityTag
+                + " liveScaleTag=" + lastLiveScaleTag
+                + " bitrateMode=" + (lastManualBitrate ? "MANUAL" : "AUTO")
+                + " targetKbps=" + lastBitrateKbps);
+        panel.appendDiagnosticLine("RTMP Stream Started Successfully @ " + ts);
+        panel.appendDiagnosticLine("Server URL: " + url);
+        panel.appendDiagnosticLine("Selected camera: " + cam + " | encoder resolution: " + (res != null ? res : "—"));
+    }
+
+    private void maybeLogVerboseStatusSnapshot(
+            @NonNull LiveStreamStatus status,
+            boolean publishing,
+            boolean managerOn) {
+        long now = SystemClock.uptimeMillis();
+        if (now - lastVerboseStatusLogMs < STATUS_VERBOSE_INTERVAL_MS) {
+            return;
+        }
+        lastVerboseStatusLogMs = now;
+        LogUtils.i(LOG_TAG, "LiveStreamStatus snapshot: streaming=" + status.isStreaming()
+                + " managerOn=" + managerOn
+                + " publishing=" + publishing
+                + " fps=" + status.getFps()
+                + " vbps(raw)=" + status.getVbps()
+                + " res=" + formatResolution(status.getResolution())
+                + " loss=" + status.getPacketLoss()
+                + " cache=" + status.getPacketCacheLen()
+                + " rtt(ms)=" + status.getRtt());
+    }
+
+    @NonNull
+    private String buildBitrateDisplay(@NonNull LiveStreamStatus status, int vbps) {
+        if (vbps > 0) {
+            return formatBitrateKbpsFromSdk(vbps);
+        }
+        if (lastManualBitrate && lastBitrateKbps > 0) {
+            return activity.getString(R.string.uxsdk_rtmp_bitrate_sdk_zero_manual, lastBitrateKbps);
+        }
+        int est = heuristicBitrateKbps(status.getResolution(), status.getFps());
+        if (est > 0) {
+            return activity.getString(R.string.uxsdk_rtmp_bitrate_sdk_zero_auto, est);
+        }
+        return "0 kbps (SDK vbps=0; no est.)";
+    }
+
+    /**
+     * DJI docs: {@code getVbps} returns live video bit rate; reference implementation divides by 1024 for kbps.
+     * If your build returns kbps already as a small int, log raw {@code vbps} in diagnostics and adjust here.
+     */
+    @NonNull
+    private static String formatBitrateKbpsFromSdk(int vbps) {
+        return String.format(Locale.US, "%d kbps (SDK vbps/1024)", vbps / 1024);
+    }
+
+    /** Rough Mbps upper bound when SDK does not populate {@code vbps} (AUTO mode). Not a ground-truth meter. */
+    private static int heuristicBitrateKbps(@Nullable VideoResolution res, int fps) {
+        if (res == null || fps <= 0) {
+            return 0;
+        }
+        int w = res.getWidth();
+        int h = res.getHeight();
+        if (w <= 0 || h <= 0) {
+            return 0;
+        }
+        long pixels = (long) w * (long) h;
+        int est = (int) Math.min(12000, Math.max(400, pixels * fps / 180_000L));
+        return est;
+    }
+
+    private static final class HealthUi {
+        final String label;
+        final int colorRes;
+
+        HealthUi(String label, int colorRes) {
+            this.label = label;
+            this.colorRes = colorRes;
+        }
+    }
+
+    @NonNull
+    private HealthUi healthFromMetrics(@NonNull LiveStreamStatus status) {
         int fps = status.getFps();
         int vbps = status.getVbps();
-        if (fps >= 15 && vbps >= MIN_VBPS_FOR_LIVE) {
-            return activity.getString(R.string.uxsdk_rtmp_health_good);
+        int loss = Math.max(0, status.getPacketLoss());
+        int rtt = status.getRtt();
+
+        boolean badRtt = rtt > 400;
+        boolean midRtt = rtt > 200 && rtt <= 400;
+        boolean heavyLoss = loss > 30;
+        boolean someLoss = loss > 8;
+
+        if (fps >= 26 && !heavyLoss && !badRtt) {
+            return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_excellent), R.color.uxsdk_green_500);
+        }
+        if (fps >= 22 && !heavyLoss && !badRtt) {
+            return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_good), R.color.uxsdk_green);
+        }
+        if (fps >= 16 && !heavyLoss) {
+            return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_fair), R.color.uxsdk_white);
         }
         if (fps > 0 || vbps > 0) {
-            return activity.getString(R.string.uxsdk_rtmp_health_marginal);
+            if (heavyLoss || badRtt) {
+                return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_poor), R.color.uxsdk_red_500);
+            }
+            if (someLoss || midRtt || (fps < 16 && fps > 0)) {
+                return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_marginal), R.color.uxsdk_orange_material_800);
+            }
+            return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_marginal), R.color.uxsdk_orange_material_800);
         }
-        return activity.getString(R.string.uxsdk_rtmp_health_connecting);
+        if (vbps >= MIN_VBPS_FOR_LIVE) {
+            return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_good), R.color.uxsdk_green);
+        }
+        return new HealthUi(activity.getString(R.string.uxsdk_rtmp_health_connecting), R.color.uxsdk_yellow_500);
     }
 
+    /**
+     * Some firmware builds report {@code fps} without {@code vbps}; treat healthy FPS as publishing to avoid
+     * false "reconnecting" and perpetual "marginal" health when vbps stays at 0.
+     */
     private static boolean isActivelyPublishing(@NonNull LiveStreamStatus status) {
         if (!status.isStreaming()) {
             return false;
         }
-        return status.getFps() > 0 || status.getVbps() >= MIN_VBPS_FOR_LIVE;
+        int fps = status.getFps();
+        int vbps = status.getVbps();
+        return fps >= 12 || vbps >= MIN_VBPS_FOR_LIVE;
     }
 
     @MainThread
@@ -363,6 +586,11 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
         LiveStreamSessionState prev = panel.applyStreamState(next, displayError, disconnectedIdle);
         if (prev == next) {
             return;
+        }
+        if (prev == LiveStreamSessionState.LIVE && next == LiveStreamSessionState.RECONNECTING) {
+            reconnectCount++;
+            LogUtils.w(LOG_TAG, "Reconnect attempt count=" + reconnectCount);
+            panel.appendDiagnosticLine("Reconnect attempt #" + reconnectCount);
         }
         LogUtils.i(LOG_TAG, "state " + prev + " -> " + next + (fireToast ? " (toast)" : ""));
         panel.appendDiagnosticLine("State " + prev + " -> " + next);
@@ -449,11 +677,41 @@ public final class LiveStreamBridge implements RtmpSettingsPanel.StreamHost {
         return fps <= 0 ? null : String.format(Locale.US, "%d", fps);
     }
 
-    private static String formatBitrate(int vbps) {
-        if (vbps <= 0) {
-            return null;
+    @Nullable
+    private static String describeAircraftStreamFrame(
+            @NonNull ICameraStreamManager mgr,
+            @NonNull ComponentIndexType cam) {
+        try {
+            java.lang.reflect.Method m = ICameraStreamManager.class.getMethod(
+                    "getAircraftStreamFrameInfo", ComponentIndexType.class);
+            Object fi = m.invoke(mgr, cam);
+            if (fi == null) {
+                return null;
+            }
+            Integer w = invokeIntGetter(fi, "getWidth");
+            Integer h = invokeIntGetter(fi, "getHeight");
+            Integer fr = invokeIntGetter(fi, "getFrameRate");
+            if (w != null && h != null && w > 0 && h > 0) {
+                String fpsPart = fr != null && fr > 0 ? " @" + fr + "fps" : "";
+                return w + "×" + h + fpsPart;
+            }
+        } catch (Throwable t) {
+            LogUtils.w(LOG_TAG, "describeAircraftStreamFrameInfo: " + t);
         }
-        return String.format(Locale.US, "%d kbps", vbps / 1024);
+        return null;
+    }
+
+    @Nullable
+    private static Integer invokeIntGetter(@NonNull Object target, @NonNull String name) {
+        try {
+            Method m = target.getClass().getMethod(name);
+            Object o = m.invoke(target);
+            if (o instanceof Integer) {
+                return (Integer) o;
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
     }
 
     private void logDjiError(@NonNull String prefix, @NonNull IDJIError error) {

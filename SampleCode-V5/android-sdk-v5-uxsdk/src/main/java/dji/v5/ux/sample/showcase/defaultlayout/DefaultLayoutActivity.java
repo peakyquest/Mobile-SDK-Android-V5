@@ -27,12 +27,9 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.Button;
+import android.view.ViewGroup;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -40,6 +37,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -144,9 +142,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     protected ImageView btnMapType;
     protected ImageView btnFlyZones;
     protected ImageView btnMission;
-    protected Button btnLiveStream;
+    protected ImageView btnLiveStream;
     private View liveStreamPanelContent;
-    private AlertDialog liveStreamDialog;
+    private AlertDialog rtmpSettingsDialog;
     /** Waypoint planning on the map (KMZ upload / start uses {@link dji.v5.manager.aircraft.waypoint3.WaypointMissionManager}). */
     private WaypointPlanner waypointPlanner;
     private View waypointMissionDrawerShell;
@@ -384,25 +382,13 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void showMissionTypeDialog() {
-        View root = LayoutInflater.from(this).inflate(R.layout.uxsdk_dialog_mission_type_picker, null, false);
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(root)
-                .setCancelable(true)
-                .create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        }
-
-        View waypointCard = root.findViewById(R.id.uxsdk_mission_picker_waypoint_card);
-        View mappingCard = root.findViewById(R.id.uxsdk_mission_picker_mapping_card);
-
-        waypointCard.setOnClickListener(v -> {
+        Map<Integer, CardPickerDialog.Listener> cards = new LinkedHashMap<>();
+        cards.put(R.id.uxsdk_mission_picker_waypoint_card, dialog -> {
             dialog.dismiss();
             if (mappingPlanner != null) {
                 mappingPlanner.clearPlanning();
             }
             if (btnMission != null) {
-                // Show custom waypoint image when mission mode is entered.
                 btnMission.setImageResource(R.drawable.way);
                 btnMission.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 btnMission.setPadding(6, 6, 6, 6);
@@ -415,7 +401,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             waypointPlanner.bindDrawer(waypointMissionDrawerShell);
             waypointPlanner.startWaypointPlanning();
         });
-        mappingCard.setOnClickListener(v -> {
+        cards.put(R.id.uxsdk_mission_picker_mapping_card, dialog -> {
             dialog.dismiss();
             if (waypointPlanner != null) {
                 waypointPlanner.clearPlanning();
@@ -433,7 +419,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             mappingPlanner.bindDrawer(mappingDrawerShell);
             mappingPlanner.startMappingPlanning();
         });
-        dialog.show();
+        CardPickerDialog.show(this, R.layout.uxsdk_dialog_mission_type_picker, cards);
     }
 
     private void showMapTypeDialog() {
@@ -465,7 +451,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 dialog.dismiss();
             });
         }
-        applyCenteredFlyoutDialogWindow(dialog);
+        CardPickerDialog.applyCenteredTransparentWindow(dialog);
         dialog.show();
     }
 
@@ -495,24 +481,8 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 .setView(root)
                 .setPositiveButton(R.string.uxsdk_default_layout_dialog_done, (d, w) -> d.dismiss())
                 .create();
-        applyCenteredFlyoutDialogWindow(dialog);
+        CardPickerDialog.applyCenteredTransparentWindow(dialog);
         dialog.show();
-    }
-
-    /**
-     * Puts the custom panel dead-center on the screen (landscape FPV layouts often default dialogs to the top).
-     */
-    private static void applyCenteredFlyoutDialogWindow(@NonNull AlertDialog dialog) {
-        Window window = dialog.getWindow();
-        if (window == null) {
-            return;
-        }
-        window.setBackgroundDrawableResource(android.R.color.transparent);
-        WindowManager.LayoutParams lp = window.getAttributes();
-        lp.gravity = Gravity.CENTER;
-        lp.width = WindowManager.LayoutParams.MATCH_PARENT;
-        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
-        window.setAttributes(lp);
     }
 
     private void toggleRightDrawer() {
@@ -520,28 +490,47 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void showLiveStreamDialog() {
-        if (liveStreamDialog != null && liveStreamDialog.isShowing()) {
+        if (rtmpSettingsDialog != null && rtmpSettingsDialog.isShowing()) {
             return;
         }
-        if (liveStreamDialog == null) {
-            liveStreamDialog = new AlertDialog.Builder(this, R.style.UXSDKDefaultLayoutDarkAlertDialog)
-                    .setTitle(R.string.uxsdk_default_layout_live_stream_dialog_title)
-                    .setView(liveStreamPanelContent)
-                    .setPositiveButton(R.string.uxsdk_default_layout_dialog_done, (d, which) -> d.dismiss())
-                    .create();
-            liveStreamDialog.setCanceledOnTouchOutside(true);
-            applyCenteredFlyoutDialogWindow(liveStreamDialog);
+        Map<Integer, CardPickerDialog.Listener> cards = new LinkedHashMap<>();
+        cards.put(R.id.uxsdk_live_stream_picker_rtmp_card, dialog -> {
+            dialog.dismiss();
+            showRtmpSettingsDialog();
+        });
+        cards.put(R.id.uxsdk_live_stream_picker_commons_card, dialog -> {
+            dialog.dismiss();
+            Toast.makeText(this, R.string.uxsdk_live_stream_picker_commons_subtitle, Toast.LENGTH_SHORT).show();
+        });
+        CardPickerDialog.show(this, R.layout.uxsdk_dialog_live_stream_type_picker, cards);
+    }
+
+    private void showRtmpSettingsDialog() {
+        if (rtmpSettingsDialog != null && rtmpSettingsDialog.isShowing()) {
+            return;
         }
-        liveStreamDialog.show();
+        if (rtmpSettingsDialog == null) {
+            View shell = LayoutInflater.from(this).inflate(R.layout.uxsdk_dialog_rtmp_settings_flyout, null, false);
+            ViewGroup host = shell.findViewById(R.id.uxsdk_rtmp_flyout_panel_host);
+            liveStreamPanelContent.setBackgroundResource(android.R.color.transparent);
+            host.addView(liveStreamPanelContent);
+            rtmpSettingsDialog = CardPickerDialog.centeredFlyoutBuilder(this)
+                    .setView(shell)
+                    .setCancelable(true)
+                    .create();
+            rtmpSettingsDialog.setCanceledOnTouchOutside(true);
+            CardPickerDialog.applyCenteredTransparentWindow(rtmpSettingsDialog);
+        }
+        rtmpSettingsDialog.show();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (liveStreamDialog != null && liveStreamDialog.isShowing()) {
-            liveStreamDialog.dismiss();
+        if (rtmpSettingsDialog != null && rtmpSettingsDialog.isShowing()) {
+            rtmpSettingsDialog.dismiss();
         }
-        liveStreamDialog = null;
+        rtmpSettingsDialog = null;
         if (waypointPlanner != null) {
             waypointPlanner.clearPlanning();
         }

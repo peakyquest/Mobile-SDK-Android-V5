@@ -310,6 +310,8 @@
                 android:text="@string/uxsdk_waypoint_drawer_api_note"
                 android:textColor="@color/uxsdk_white_70_percent"
                 android:textSize="11sp" />
+
+            <include layout="@layout/uxsdk_include_mission_drawer_log" />
         </LinearLayout>
     </ScrollView>
 

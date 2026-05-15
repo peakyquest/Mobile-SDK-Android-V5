@@ -223,19 +223,16 @@
             app:layout_constraintTop_toBottomOf="@+id/widget_focus_exposure_switch"
             app:layout_constraintVertical_bias="0.05" />
 
-        <Button
+        <ImageView
             android:id="@+id/uxsdk_btn_live_stream"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_marginStart="12dp"
             android:layout_marginTop="100dp"
-            android:background="@drawable/uxsdk_waypoint_drawer_btn_outline"
-            android:minHeight="40dp"
-            android:text="@string/uxsdk_default_layout_btn_live_stream"
-            android:textAllCaps="false"
-            android:textColor="@color/uxsdk_waypoint_drawer_btn_text"
-            android:textSize="13sp"
-            app:layout_constraintEnd_toEndOf="@+id/widget_take_off"
+            android:background="@drawable/uxsdk_selector_icon_bg"
+            android:contentDescription="@string/uxsdk_default_layout_btn_live_stream_content_description"
+            android:padding="8dp"
+            android:src="@drawable/uxsdk_ic_streaming_comms"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:ignore="TouchTargetSizeCheck" />
@@ -382,7 +379,7 @@
 
     <!--
        Right drawer: DJI SettingPanelWidget only. RTMP live stream opens from the
-       "Live Stream" button above Takeoff (see uxsdk_btn_live_stream).
+       Streaming &amp; Comms icon above Takeoff (see uxsdk_btn_live_stream).
        layout_width/height/gravity are mandatory on <include> so DrawerLayout
        recognises this child as the end-drawer.
     -->

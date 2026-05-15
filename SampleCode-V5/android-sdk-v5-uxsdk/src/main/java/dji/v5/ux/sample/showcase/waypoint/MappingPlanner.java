@@ -60,6 +60,7 @@ import dji.v5.ux.mapkit.core.models.annotations.DJIPolylineOptions;
  * Mapping planner: tap to add polygon vertices and generate predefined shapes.
  */
 public final class MappingPlanner {
+    private static final String TAG = "MappingPlanner";
     private static final String PREFS_MAPPING_TUTORIAL = "uxsdk_mapping_tutorial_prefs";
     private static final String KEY_MAPPING_TUTORIAL_SHOWN = "mapping_tutorial_shown";
     private final AppCompatActivity activity;
@@ -99,6 +100,7 @@ public final class MappingPlanner {
     private boolean suppressMissionSpinnerCallbacks;
     private boolean uploadInProgress;
     private boolean startInProgress;
+    private final MissionDrawerLog drawerLog = new MissionDrawerLog();
     private boolean planDirtySinceUpload = true;
     private boolean lastUploadSucceeded;
     @Nullable
@@ -181,6 +183,8 @@ public final class MappingPlanner {
         spFinish = drawerShell.findViewById(R.id.uxsdk_mapping_sp_finish);
         spRcLost = drawerShell.findViewById(R.id.uxsdk_mapping_sp_rc_lost);
         uploadProgress = drawerShell.findViewById(R.id.uxsdk_mapping_upload_progress);
+        drawerLog.setLogTag(TAG);
+        drawerLog.bind(drawerShell.findViewById(R.id.uxsdk_mission_drawer_tv_log));
 
         setupMissionActionSpinners();
 
@@ -275,6 +279,8 @@ public final class MappingPlanner {
         attachDragListener();
         uploadInProgress = false;
         startInProgress = false;
+        drawerLog.clear();
+        drawerLog.append("Mapping planning started — tap the map to add polygon vertices.");
         markPlanDirty();
         showDrawer(true);
         Toast.makeText(activity, R.string.uxsdk_mapping_tap_map_hint, Toast.LENGTH_LONG).show();
@@ -308,6 +314,9 @@ public final class MappingPlanner {
             selectedPolygonId = -1L;
             selectedVertexIndex = -1;
             redrawPolygon(selectedPolygon, map);
+            drawerLog.append(String.format(Locale.US,
+                    "Vertex %d moved (%.6f, %.6f).", selectedVertexIndex + 1,
+                    latLng.getLatitude(), latLng.getLongitude()));
             Toast.makeText(activity, R.string.uxsdk_mapping_vertex_updated, Toast.LENGTH_SHORT).show();
             return true;
         }
@@ -317,10 +326,13 @@ public final class MappingPlanner {
         DJIMarker mk = addVertexMarker(map, latLng, active.points.size());
         if (mk != null) active.markers.add(mk);
         redrawPolygon(active, map);
+        drawerLog.append(String.format(Locale.US,
+                "Vertex %d added (%.6f, %.6f).", active.points.size(), latLng.getLatitude(), latLng.getLongitude()));
         return true;
     }
 
     public void clearPlanning() {
+        drawerLog.append("Mapping planning cleared.");
         planningActive = false;
         detachDragListener();
         detachMarkerClickListener();
@@ -360,6 +372,7 @@ public final class MappingPlanner {
             refreshSummary();
         }
         updateMarkerTitles(active);
+        drawerLog.append("Last vertex removed.");
     }
 
     private void clearPolygonOnly() {
@@ -373,6 +386,7 @@ public final class MappingPlanner {
             selectedVertexIndex = -1;
         }
         refreshSummary();
+        drawerLog.append("Polygon cleared.");
     }
 
     private void clearAllPolygons() {
@@ -389,16 +403,19 @@ public final class MappingPlanner {
     private void buildSquare() {
         DJILatLng c = resolveShapeCenter();
         double half = 30.0;
+        drawerLog.append("Square shape placed (60×60 m).");
         addShapePolygon(buildRectPoints(c, half, half));
     }
 
     private void buildRectangle() {
         DJILatLng c = resolveShapeCenter();
+        drawerLog.append("Rectangle shape placed (90×50 m).");
         addShapePolygon(buildRectPoints(c, 45.0, 25.0));
     }
 
     private void buildCircle() {
         DJILatLng c = resolveShapeCenter();
+        drawerLog.append(String.format(Locale.US, "Circle shape placed (r=%.0f m).", DEFAULT_CIRCLE_RADIUS_M));
         addCirclePolygon(c, DEFAULT_CIRCLE_RADIUS_M);
     }
 
@@ -645,6 +662,7 @@ public final class MappingPlanner {
         } else {
             refreshSummary();
         }
+        drawerLog.append("Vertex " + (index + 1) + " deleted.");
     }
 
     private void onVertexDragged(@Nullable DJIMarker marker) {
@@ -854,6 +872,7 @@ public final class MappingPlanner {
         DJIMap map = mapWidget.getMap();
         if (active == null || map == null || active.points.size() < 3) {
             Toast.makeText(activity, R.string.uxsdk_mapping_need_polygon_first, Toast.LENGTH_SHORT).show();
+            drawerLog.append("Generate skipped — need a polygon with at least 3 vertices.");
             return;
         }
 
@@ -903,6 +922,9 @@ public final class MappingPlanner {
             active.generatedRouteLine = map.addPolyline(lineOptions);
         }
         refreshSummary();
+        drawerLog.append(String.format(Locale.US,
+                "Generated %d survey waypoints (spacing %.0f m, route %.0f m).",
+                generated.size(), spacing, routeDistance));
     }
 
     @NonNull
@@ -1030,13 +1052,16 @@ public final class MappingPlanner {
         EditablePolygon active = getActivePolygon();
         if (active == null || active.generatedWaypoints.isEmpty()) {
             Toast.makeText(activity, R.string.uxsdk_mapping_need_polygon_first, Toast.LENGTH_SHORT).show();
+            drawerLog.append("Upload skipped — generate waypoints first.");
             return;
         }
         saveGeneratedKmzToCache(active, true);
         if (lastKmzPath == null) {
+            drawerLog.append("Upload skipped — KMZ not saved.");
             return;
         }
 
+        drawerLog.append("Uploading KMZ (" + active.generatedWaypoints.size() + " waypoints)…");
         uploadInProgress = true;
         lastUploadSucceeded = false;
         updateMissionActionState();
@@ -1067,6 +1092,7 @@ public final class MappingPlanner {
                                 uploadProgress.setProgress(100);
                             }
                             updateMissionActionState();
+                            drawerLog.append("Upload complete — ready to start.");
                             Toast.makeText(activity, R.string.uxsdk_mapping_upload_ok, Toast.LENGTH_SHORT).show();
                         });
                     }
@@ -1079,6 +1105,7 @@ public final class MappingPlanner {
                             updateUploadUiIdle();
                             updateMissionActionState();
                             String msg = error != null ? error.description() : "?";
+                            drawerLog.append("Upload failed: " + msg);
                             Toast.makeText(activity,
                                     activity.getString(R.string.uxsdk_mapping_upload_fail, msg),
                                     Toast.LENGTH_LONG).show();
@@ -1093,13 +1120,16 @@ public final class MappingPlanner {
         }
         if (planDirtySinceUpload || !lastUploadSucceeded) {
             Toast.makeText(activity, R.string.uxsdk_mapping_save_first, Toast.LENGTH_SHORT).show();
+            drawerLog.append("Start skipped — upload mission first.");
             return;
         }
         if (lastKmzPath == null) {
             Toast.makeText(activity, R.string.uxsdk_mapping_save_first, Toast.LENGTH_SHORT).show();
+            drawerLog.append("Start skipped — KMZ not available.");
             return;
         }
         String missionId = missionIdFromPath(lastKmzPath);
+        drawerLog.append("Starting mission " + missionId + "…");
         startInProgress = true;
         updateMissionActionState();
         WaypointMissionManager.getInstance().startMission(missionId, Collections.singletonList(0),
@@ -1109,6 +1139,7 @@ public final class MappingPlanner {
                         activity.runOnUiThread(() -> {
                             startInProgress = false;
                             updateMissionActionState();
+                            drawerLog.append("Mission started.");
                             Toast.makeText(activity, R.string.uxsdk_mapping_start_ok, Toast.LENGTH_SHORT).show();
                         });
                     }
@@ -1119,6 +1150,7 @@ public final class MappingPlanner {
                             startInProgress = false;
                             updateMissionActionState();
                             String msg = error != null ? error.description() : "?";
+                            drawerLog.append("Start failed: " + msg);
                             Toast.makeText(activity,
                                     activity.getString(R.string.uxsdk_mapping_start_fail, msg),
                                     Toast.LENGTH_LONG).show();

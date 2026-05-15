@@ -522,6 +522,25 @@
                     android:textSize="12sp"
                     android:textStyle="bold"
                     tools:text="Health: Good" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/uxsdk_rtmp_section_metrics_detail"
+                    android:textColor="@color/uxsdk_white_50_percent"
+                    android:textSize="11sp"
+                    android:textAllCaps="false" />
+
+                <TextView
+                    android:id="@+id/uxsdk_rtmp_tv_metrics_detail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingMultiplier="1.15"
+                    android:textColor="@color/uxsdk_white_60_percent"
+                    android:textSize="11sp"
+                    tools:text="RTT: — ms\nLoss: —" />
             </LinearLayout>
 
             <TextView
