@@ -126,6 +126,7 @@ public final class WaypointPlanner {
     private boolean lastUploadSucceeded;
     private boolean uploadInProgress;
     private boolean startInProgress;
+    private final MissionDrawerLog drawerLog = new MissionDrawerLog();
 
     private List<WaylineFinishedAction> finishChoices = new ArrayList<>();
     private List<WaylineExitOnRCLostAction> lostChoices = new ArrayList<>();
@@ -202,7 +203,9 @@ public final class WaypointPlanner {
         ImageButton btnClose = drawerShell.findViewById(R.id.uxsdk_waypoint_drawer_btn_close);
         Button btnApply = drawerShell.findViewById(R.id.uxsdk_waypoint_drawer_btn_apply_wp);
         Button btnDelete = drawerShell.findViewById(R.id.uxsdk_waypoint_drawer_btn_delete_wp);
-        Button btnExit = drawerShell.findViewById(R.id.uxsdk_waypoint_drawer_btn_exit);
+        Button         btnExit = drawerShell.findViewById(R.id.uxsdk_waypoint_drawer_btn_exit);
+        drawerLog.setLogTag(TAG);
+        drawerLog.bind(drawerShell.findViewById(R.id.uxsdk_mission_drawer_tv_log));
 
         if (drawerUiWired) {
             return;
@@ -298,6 +301,8 @@ public final class WaypointPlanner {
         lastUploadSucceeded = false;
         uploadInProgress = false;
         startInProgress = false;
+        drawerLog.clear();
+        drawerLog.append("Waypoint planning started — tap the map to add waypoints.");
         updateStartButtonState();
         updateUploadUiIdle();
         Toast.makeText(activity, R.string.uxsdk_waypoint_tap_map_hint, Toast.LENGTH_LONG).show();
@@ -344,6 +349,7 @@ public final class WaypointPlanner {
     }
 
     public void clearPlanning() {
+        drawerLog.append("Planning cleared.");
         detachMarkerClickListenerSafe();
         planningActive = false;
         hideDrawerImmediate();
@@ -693,9 +699,13 @@ public final class WaypointPlanner {
             updateStartButtonState();
             updateActionButtonsState();
             refreshDrawerSummaryOnly();
+            drawerLog.append(String.format(Locale.US,
+                    "Waypoint %d updated (alt %.0f m, speed %.1f m/s).",
+                    selectedWaypointIndex + 1, height, speed));
             Toast.makeText(activity, R.string.uxsdk_waypoint_updated, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             LogUtils.e(TAG, "applySelectedWaypointFromDrawer: " + logEx(e));
+            drawerLog.append("Apply waypoint failed: " + logEx(e));
             toastUi(R.string.uxsdk_waypoint_error_generic, logEx(e));
         }
     }
@@ -791,9 +801,12 @@ public final class WaypointPlanner {
             refreshDrawerUi();
             updateStartButtonState();
             updateActionButtonsState();
+            drawerLog.append(String.format(Locale.US,
+                    "Waypoint %d added (%.6f, %.6f).", planItems.size(), latLng.getLatitude(), latLng.getLongitude()));
             Toast.makeText(activity, R.string.uxsdk_waypoint_added, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             LogUtils.e(TAG, "addWaypointAt: " + logEx(e));
+            drawerLog.append("Add waypoint failed: " + logEx(e));
             if (!planItems.isEmpty()) {
                 try {
                     planItems.remove(planItems.size() - 1);
@@ -841,14 +854,17 @@ public final class WaypointPlanner {
         }
         if (planItems.isEmpty()) {
             Toast.makeText(activity, R.string.uxsdk_waypoint_need_one, Toast.LENGTH_SHORT).show();
+            drawerLog.append("Upload skipped — no waypoints.");
             return;
         }
         globals.globalSpeed = parseAndClamp(etGlobalSpeed, globals.globalSpeed,
                 MIN_GLOBAL_SPEED_MPS, MAX_GLOBAL_SPEED_MPS, "global speed");
         saveKmzToCache(true);
         if (lastKmzPath == null) {
+            drawerLog.append("Upload skipped — KMZ not saved.");
             return;
         }
+        drawerLog.append("Uploading KMZ (" + planItems.size() + " waypoints)…");
         uploadInProgress = true;
         lastUploadSucceeded = false;
         updateActionButtonsState();
@@ -882,6 +898,7 @@ public final class WaypointPlanner {
                                 lastUploadSucceeded = true;
                                 updateStartButtonState();
                                 updateActionButtonsState();
+                                drawerLog.append("Upload complete — ready to start.");
                                 Toast.makeText(activity, R.string.uxsdk_waypoint_upload_ok, Toast.LENGTH_SHORT).show();
                             });
                         }
@@ -894,9 +911,10 @@ public final class WaypointPlanner {
                                 lastUploadSucceeded = false;
                                 updateStartButtonState();
                                 updateActionButtonsState();
+                                String msg = error != null ? error.description() : "?";
+                                drawerLog.append("Upload failed: " + msg);
                                 Toast.makeText(activity,
-                                        activity.getString(R.string.uxsdk_waypoint_upload_fail,
-                                                error != null ? error.description() : "?"),
+                                        activity.getString(R.string.uxsdk_waypoint_upload_fail, msg),
                                         Toast.LENGTH_LONG).show();
                             });
                         }
@@ -906,6 +924,7 @@ public final class WaypointPlanner {
             updateUploadUiIdle();
             updateActionButtonsState();
             LogUtils.e(TAG, "uploadMissionFromDrawer: " + logEx(e));
+            drawerLog.append("Upload error: " + logEx(e));
             toastUi(R.string.uxsdk_waypoint_error_generic, logEx(e));
         }
     }
@@ -981,9 +1000,11 @@ public final class WaypointPlanner {
             updateStartButtonState();
             updateActionButtonsState();
             refreshDrawerSummaryOnly();
+            drawerLog.append("Waypoint " + (index + 1) + " deleted.");
             toastUi(R.string.uxsdk_waypoint_deleted);
         } catch (Exception e) {
             LogUtils.e(TAG, "deleteWaypointAt: " + logEx(e));
+            drawerLog.append("Delete waypoint failed: " + logEx(e));
             toastUi(R.string.uxsdk_waypoint_error_generic, logEx(e));
         }
     }
@@ -1130,6 +1151,7 @@ public final class WaypointPlanner {
             WPMZManager.getInstance().generateKMZFile(out.getAbsolutePath(), mission, config, template);
             lastKmzPath = out.getAbsolutePath();
             if (!quiet) {
+                drawerLog.append("KMZ saved: " + lastKmzPath);
                 Toast.makeText(activity, activity.getString(R.string.uxsdk_waypoint_kmz_saved, lastKmzPath),
                         Toast.LENGTH_LONG).show();
             }
@@ -1145,6 +1167,7 @@ public final class WaypointPlanner {
         }
         if (planDirtySinceUpload || !lastUploadSucceeded) {
             Toast.makeText(activity, R.string.uxsdk_waypoint_save_first, Toast.LENGTH_SHORT).show();
+            drawerLog.append("Start skipped — upload mission first.");
             return;
         }
         try {
@@ -1153,9 +1176,11 @@ public final class WaypointPlanner {
             }
             if (lastKmzPath == null) {
                 Toast.makeText(activity, R.string.uxsdk_waypoint_save_first, Toast.LENGTH_SHORT).show();
+                drawerLog.append("Start skipped — KMZ not available.");
                 return;
             }
             String missionId = missionIdFromPath(lastKmzPath);
+            drawerLog.append("Starting mission " + missionId + "…");
             startInProgress = true;
             updateActionButtonsState();
             WaypointMissionManager.getInstance().startMission(missionId, Collections.singletonList(0),
@@ -1166,6 +1191,7 @@ public final class WaypointPlanner {
                             {
                                 startInProgress = false;
                                 updateActionButtonsState();
+                                drawerLog.append("Mission started.");
                                 Toast.makeText(activity, R.string.uxsdk_waypoint_start_ok, Toast.LENGTH_SHORT).show();
                             });
                         }
@@ -1176,9 +1202,10 @@ public final class WaypointPlanner {
                             {
                                 startInProgress = false;
                                 updateActionButtonsState();
+                                String msg = error != null ? error.description() : "?";
+                                drawerLog.append("Start failed: " + msg);
                                 Toast.makeText(activity,
-                                        activity.getString(R.string.uxsdk_waypoint_start_fail,
-                                                error != null ? error.description() : "?"),
+                                        activity.getString(R.string.uxsdk_waypoint_start_fail, msg),
                                         Toast.LENGTH_LONG).show();
                             });
                         }
@@ -1187,6 +1214,7 @@ public final class WaypointPlanner {
             startInProgress = false;
             updateActionButtonsState();
             LogUtils.e(TAG, "startLastUploadedMission: " + logEx(e));
+            drawerLog.append("Start error: " + logEx(e));
             toastUi(R.string.uxsdk_waypoint_error_generic, logEx(e));
         }
     }

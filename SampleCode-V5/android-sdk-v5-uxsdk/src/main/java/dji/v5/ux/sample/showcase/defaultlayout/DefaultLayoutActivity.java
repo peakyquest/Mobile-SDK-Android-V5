@@ -27,11 +27,9 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
+import android.view.ViewGroup;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -39,6 +37,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -95,6 +94,8 @@ import dji.v5.ux.map.MapWidget;
 import dji.v5.ux.mapkit.core.maps.DJIMap;
 import dji.v5.ux.mapkit.core.maps.DJIUiSettings;
 import dji.v5.ux.mapkit.core.models.DJILatLng;
+import dji.v5.ux.sample.showcase.livestream.LiveStreamBridge;
+import dji.v5.ux.sample.showcase.livestream.RtmpSettingsPanel;
 import dji.v5.ux.sample.showcase.waypoint.MappingPlanner;
 import dji.v5.ux.sample.showcase.waypoint.WaypointPlanner;
 import dji.v5.ux.mapkit.maplibre.map.MaplibreMapDelegate;
@@ -141,11 +142,16 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     protected ImageView btnMapType;
     protected ImageView btnFlyZones;
     protected ImageView btnMission;
+    protected ImageView btnLiveStream;
+    private View liveStreamPanelContent;
+    private AlertDialog rtmpSettingsDialog;
     /** Waypoint planning on the map (KMZ upload / start uses {@link dji.v5.manager.aircraft.waypoint3.WaypointMissionManager}). */
     private WaypointPlanner waypointPlanner;
     private View waypointMissionDrawerShell;
     private MappingPlanner mappingPlanner;
     private View mappingDrawerShell;
+    private RtmpSettingsPanel rtmpSettingsPanel;
+    private LiveStreamBridge liveStreamBridge;
     protected ConstraintLayout fpvParentView;
     private DrawerLayout mDrawerLayout;
     private TextView gimbalAdjustDone;
@@ -179,7 +185,14 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 @Override
                 public void onAvailableCameraUpdated(@NonNull List<ComponentIndexType> availableCameraList) {
                     lastAvailableCameraList = availableCameraList;
-                    runOnUiThread(() -> updateFPVWidgetSource(availableCameraList));
+                    runOnUiThread(() -> {
+                        updateFPVWidgetSource(availableCameraList);
+                        if (rtmpSettingsPanel != null) {
+                            rtmpSettingsPanel.onDeviceCamerasUpdated(
+                                    new ArrayList<>(availableCameraList),
+                                    computePrimaryFpvSource(availableCameraList));
+                        }
+                    });
                 }
 
                 @Override
@@ -235,6 +248,14 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 (ConstraintLayout.LayoutParams) mapWidget.getLayoutParams());
         fpvFullLayoutParams = new ConstraintLayout.LayoutParams(
                 (ConstraintLayout.LayoutParams) fpvParentView.getLayoutParams());
+
+        liveStreamPanelContent = LayoutInflater.from(this).inflate(R.layout.uxsdk_panel_rtmp_settings, null, false);
+        rtmpSettingsPanel = new RtmpSettingsPanel(this);
+        liveStreamBridge = new LiveStreamBridge(this, rtmpSettingsPanel);
+        rtmpSettingsPanel.bindRtmpPanelRoot(liveStreamPanelContent, liveStreamBridge);
+        liveStreamBridge.attach();
+
+        btnLiveStream = findViewById(R.id.uxsdk_btn_live_stream);
 
         initClickListener();
 
@@ -324,6 +345,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         if (btnMission != null) {
             btnMission.setOnClickListener(v -> onMissionButtonClick());
         }
+        if (btnLiveStream != null) {
+            btnLiveStream.setOnClickListener(v -> showLiveStreamDialog());
+        }
     }
 
     /**
@@ -358,25 +382,13 @@ public class DefaultLayoutActivity extends AppCompatActivity {
     }
 
     private void showMissionTypeDialog() {
-        View root = LayoutInflater.from(this).inflate(R.layout.uxsdk_dialog_mission_type_picker, null, false);
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(root)
-                .setCancelable(true)
-                .create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        }
-
-        View waypointCard = root.findViewById(R.id.uxsdk_mission_picker_waypoint_card);
-        View mappingCard = root.findViewById(R.id.uxsdk_mission_picker_mapping_card);
-
-        waypointCard.setOnClickListener(v -> {
+        Map<Integer, CardPickerDialog.Listener> cards = new LinkedHashMap<>();
+        cards.put(R.id.uxsdk_mission_picker_waypoint_card, dialog -> {
             dialog.dismiss();
             if (mappingPlanner != null) {
                 mappingPlanner.clearPlanning();
             }
             if (btnMission != null) {
-                // Show custom waypoint image when mission mode is entered.
                 btnMission.setImageResource(R.drawable.way);
                 btnMission.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 btnMission.setPadding(6, 6, 6, 6);
@@ -389,7 +401,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             waypointPlanner.bindDrawer(waypointMissionDrawerShell);
             waypointPlanner.startWaypointPlanning();
         });
-        mappingCard.setOnClickListener(v -> {
+        cards.put(R.id.uxsdk_mission_picker_mapping_card, dialog -> {
             dialog.dismiss();
             if (waypointPlanner != null) {
                 waypointPlanner.clearPlanning();
@@ -407,7 +419,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
             mappingPlanner.bindDrawer(mappingDrawerShell);
             mappingPlanner.startMappingPlanning();
         });
-        dialog.show();
+        CardPickerDialog.show(this, R.layout.uxsdk_dialog_mission_type_picker, cards);
     }
 
     private void showMapTypeDialog() {
@@ -439,7 +451,7 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 dialog.dismiss();
             });
         }
-        applyCenteredFlyoutDialogWindow(dialog);
+        CardPickerDialog.applyCenteredTransparentWindow(dialog);
         dialog.show();
     }
 
@@ -469,34 +481,64 @@ public class DefaultLayoutActivity extends AppCompatActivity {
                 .setView(root)
                 .setPositiveButton(R.string.uxsdk_default_layout_dialog_done, (d, w) -> d.dismiss())
                 .create();
-        applyCenteredFlyoutDialogWindow(dialog);
+        CardPickerDialog.applyCenteredTransparentWindow(dialog);
         dialog.show();
-    }
-
-    /**
-     * Puts the custom panel dead-center on the screen (landscape FPV layouts often default dialogs to the top).
-     */
-    private static void applyCenteredFlyoutDialogWindow(@NonNull AlertDialog dialog) {
-        Window window = dialog.getWindow();
-        if (window == null) {
-            return;
-        }
-        window.setBackgroundDrawableResource(android.R.color.transparent);
-        WindowManager.LayoutParams lp = window.getAttributes();
-        lp.gravity = Gravity.CENTER;
-        lp.width = WindowManager.LayoutParams.MATCH_PARENT;
-        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
-        window.setAttributes(lp);
     }
 
     private void toggleRightDrawer() {
         mDrawerLayout.openDrawer(GravityCompat.END);
     }
+
+    private void showLiveStreamDialog() {
+        if (rtmpSettingsDialog != null && rtmpSettingsDialog.isShowing()) {
+            return;
+        }
+        Map<Integer, CardPickerDialog.Listener> cards = new LinkedHashMap<>();
+        cards.put(R.id.uxsdk_live_stream_picker_rtmp_card, dialog -> {
+            dialog.dismiss();
+            showRtmpSettingsDialog();
+        });
+        cards.put(R.id.uxsdk_live_stream_picker_commons_card, dialog -> {
+            dialog.dismiss();
+            Toast.makeText(this, R.string.uxsdk_live_stream_picker_commons_subtitle, Toast.LENGTH_SHORT).show();
+        });
+        CardPickerDialog.show(this, R.layout.uxsdk_dialog_live_stream_type_picker, cards);
+    }
+
+    private void showRtmpSettingsDialog() {
+        if (rtmpSettingsDialog != null && rtmpSettingsDialog.isShowing()) {
+            return;
+        }
+        if (rtmpSettingsDialog == null) {
+            View shell = LayoutInflater.from(this).inflate(R.layout.uxsdk_dialog_rtmp_settings_flyout, null, false);
+            ViewGroup host = shell.findViewById(R.id.uxsdk_rtmp_flyout_panel_host);
+            liveStreamPanelContent.setBackgroundResource(android.R.color.transparent);
+            host.addView(liveStreamPanelContent);
+            rtmpSettingsDialog = CardPickerDialog.centeredFlyoutBuilder(this)
+                    .setView(shell)
+                    .setCancelable(true)
+                    .create();
+            rtmpSettingsDialog.setCanceledOnTouchOutside(true);
+            CardPickerDialog.applyCenteredTransparentWindow(rtmpSettingsDialog);
+        }
+        rtmpSettingsDialog.show();
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (rtmpSettingsDialog != null && rtmpSettingsDialog.isShowing()) {
+            rtmpSettingsDialog.dismiss();
+        }
+        rtmpSettingsDialog = null;
         if (waypointPlanner != null) {
             waypointPlanner.clearPlanning();
+        }
+        if (liveStreamBridge != null) {
+            liveStreamBridge.detach();
+        }
+        if (rtmpSettingsPanel != null) {
+            rtmpSettingsPanel.onDestroy();
         }
         mapWidget.onDestroy();
         MediaDataCenter.getInstance().getCameraStreamManager()
@@ -671,7 +713,8 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         }
 
         if (cameraList.size() == 1) {
-            primaryFpvWidget.updateVideoSource(availableCameraList.get(0));
+            ComponentIndexType only = cameraList.get(0);
+            primaryFpvWidget.updateVideoSource(only);
             secondaryFPVWidget.setVisibility(View.GONE);
             return;
         }
@@ -698,6 +741,21 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         return defaultSource;
     }
 
+    /**
+     * Primary FPV camera index used for live stream defaults (matches {@link #updateFPVWidgetSource}).
+     */
+    @Nullable
+    private ComponentIndexType computePrimaryFpvSource(@NonNull List<ComponentIndexType> availableCameraList) {
+        if (availableCameraList.isEmpty()) {
+            return null;
+        }
+        if (availableCameraList.size() == 1) {
+            return availableCameraList.get(0);
+        }
+        ArrayList<ComponentIndexType> copy = new ArrayList<>(availableCameraList);
+        return getSuitableSource(copy, ComponentIndexType.LEFT_OR_MAIN);
+    }
+
     private void onCameraSourceUpdated(ComponentIndexType devicePosition, CameraLensType lensType) {
         LogUtils.i(LogPath.SAMPLE, "onCameraSourceUpdated", devicePosition, lensType);
         if (devicePosition == lastDevicePosition && lensType == lastLensType) return;
@@ -705,6 +763,9 @@ public class DefaultLayoutActivity extends AppCompatActivity {
         lastLensType = lensType;
         updateViewVisibility(devicePosition, lensType);
         updateInteractionEnabled();
+        if (rtmpSettingsPanel != null) {
+            rtmpSettingsPanel.updateCameraFromHost(devicePosition);
+        }
         if (fpvInteractionWidget.isInteractionEnabled())
             fpvInteractionWidget.updateCameraSource(devicePosition, lensType);
         if (lensControlWidget.getVisibility() == View.VISIBLE)

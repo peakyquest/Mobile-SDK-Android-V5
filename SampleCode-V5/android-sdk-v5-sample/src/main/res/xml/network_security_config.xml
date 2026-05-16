@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  RTMP (rtmp://) uses cleartext TCP. Without this, connections to LAN IPs such as
+  192.168.x.x can fail on targetSdk 28+ with little or no useful error text from the stack.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

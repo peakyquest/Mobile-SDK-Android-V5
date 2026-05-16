@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Right-edge drawer of DefaultLayoutActivity: aircraft settings only.
+  ~ RTMP live stream is opened from the on-screen "Live Stream" button (see uxsdk_activity_default_layout).
+  -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/uxsdk_right_drawer_root"
+    android:layout_width="@dimen/uxsdk_510_dp"
+    android:layout_height="match_parent"
+    android:layout_gravity="end"
+    android:background="@color/uxsdk_fpv_popover_content_background_color"
+    android:descendantFocusability="afterDescendants">
+
+    <dji.v5.ux.core.widget.setting.SettingPanelWidget
+        android:id="@+id/manual_right_nav_setting"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</FrameLayout>

@@ -223,19 +223,33 @@
             app:layout_constraintTop_toBottomOf="@+id/widget_focus_exposure_switch"
             app:layout_constraintVertical_bias="0.05" />
 
+        <ImageView
+            android:id="@+id/uxsdk_btn_live_stream"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="100dp"
+            android:background="@drawable/uxsdk_selector_icon_bg"
+            android:contentDescription="@string/uxsdk_default_layout_btn_live_stream_content_description"
+            android:padding="8dp"
+            android:src="@drawable/uxsdk_ic_streaming_comms"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="TouchTargetSizeCheck" />
+
         <dji.v5.ux.flight.takeoff.TakeOffWidget
             android:id="@+id/widget_take_off"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginStart="12dp"
-            android:layout_marginTop="125dp"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="5dp"
             android:padding="3dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintDimensionRatio="@string/uxsdk_widget_default_ratio"
             app:layout_constraintHeight_percent="0.1"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/uxsdk_btn_live_stream"
             app:layout_constraintVertical_bias="0.3"
             tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
 
@@ -363,15 +377,16 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <dji.v5.ux.core.widget.setting.SettingPanelWidget
-        android:id="@+id/manual_right_nav_setting"
+    <!--
+       Right drawer: DJI SettingPanelWidget only. RTMP live stream opens from the
+       Streaming &amp; Comms icon above Takeoff (see uxsdk_btn_live_stream).
+       layout_width/height/gravity are mandatory on <include> so DrawerLayout
+       recognises this child as the end-drawer.
+    -->
+    <include
+        layout="@layout/uxsdk_drawer_right_settings"
         android:layout_width="@dimen/uxsdk_510_dp"
         android:layout_height="match_parent"
-        android:layout_gravity="end"
-        android:background="@color/uxsdk_fpv_popover_content_background_color"
-        android:descendantFocusability="afterDescendants">
-
-    </dji.v5.ux.core.widget.setting.SettingPanelWidget>
-
+        android:layout_gravity="end" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
